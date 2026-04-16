@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Shield, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
+import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { supabase } from '@/integrations/supabase/client';
 
 export function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -9,7 +8,6 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,26 +26,19 @@ export function LoginPage() {
           setLoading(false);
           return;
         }
-        if (!inviteCode.trim()) {
-          setError('Código de convite é obrigatório');
-          setLoading(false);
-          return;
-        }
-        // Validate invite code first
-        const { data: valid, error: rpcError } = await supabase.rpc('use_invite_code', { p_code: inviteCode.trim().toUpperCase() });
-        if (rpcError || !valid) {
-          setError('Código de convite inválido ou já utilizado.');
-          setLoading(false);
-          return;
-        }
+
         const { error } = await signUp(email, password, fullName);
+
         if (error) {
           setError(error.message);
         } else {
           setSuccess('Conta criada com sucesso! Você já pode fazer login.');
+          setIsSignUp(false);
+          setPassword('');
         }
       } else {
         const { error } = await signIn(email, password);
+
         if (error) {
           if (error.message?.includes('Email not confirmed')) {
             setError('E-mail não confirmado. Tente novamente em instantes.');
@@ -65,14 +56,16 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      {/* Background grid effect */}
-      <div className="pointer-events-none fixed inset-0 opacity-[0.03]" style={{
-        backgroundImage: 'linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)',
-        backgroundSize: '60px 60px',
-      }} />
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            'linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }}
+      />
 
       <div className="relative w-full max-w-[420px]">
-        {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/30">
             <Shield className="h-8 w-8 text-primary-foreground" />
@@ -83,7 +76,6 @@ export function LoginPage() {
           </div>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-2xl shadow-black/20">
           <div className="mb-6">
             <h2 className="text-lg font-bold text-foreground">
@@ -109,27 +101,6 @@ export function LoginPage() {
                   required={isSignUp}
                   maxLength={100}
                 />
-              </div>
-            )}
-
-            {isSignUp && (
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <KeyRound className="h-3.5 w-3.5" />
-                    Código de Convite
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  placeholder="Ex: SIPI2025"
-                  className="flex h-11 w-full rounded-lg border border-border/80 bg-background px-3.5 text-sm font-mono tracking-widest text-foreground placeholder:text-muted-foreground/60 placeholder:font-sans placeholder:tracking-normal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-                  required={isSignUp}
-                  maxLength={20}
-                />
-                <p className="mt-1 text-xs text-muted-foreground/60">Solicite ao administrador do sistema</p>
               </div>
             )}
 
@@ -215,7 +186,6 @@ export function LoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
         <p className="mt-6 text-center text-xs text-muted-foreground/60">
           Sistema restrito. Acesso autorizado apenas para pessoal habilitado.
         </p>
