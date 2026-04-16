@@ -52,6 +52,83 @@ function mapCaseRow(row: any): InvestigationCase {
   };
 }
 
+interface CurrentActor {
+  userId: string | null;
+  userEmail: string;
+  userName: string;
+}
+
+interface UpdateCaseOptions {
+  auditAction?: 'Edição' | 'Movimentação';
+  fieldLabels?: Record<string, string>;
+}
+
+const DEFAULT_FIELD_LABELS: Record<string, string> = {
+  ppe: 'Nº PPE',
+  physical_number: 'Nº Físico',
+  priority: 'Prioridade',
+  created_at: 'Data de Criação',
+  deadline: 'Prazo',
+  crime_classification: 'Tipificação',
+  severity: 'Gravidade',
+  type: 'Tipo',
+  victim: 'Vítima',
+  suspect: 'Suspeito',
+  team: 'Equipe',
+  officer: 'Escrivão',
+  location: 'Bairro',
+  district: 'Distrito',
+  motivation: 'Motivação',
+  diligence_status: 'Status diligências',
+  situation: 'Situação',
+  pending_actions: 'Diligências pendentes',
+  observations: 'Observações',
+  protective_measure: 'Medida protetiva',
+  process_number: 'Nº processo',
+  report_sent: 'Relatório enviado',
+  report_date: 'Data do relatório',
+  legal_representations: 'Representações legais',
+};
+
+function normalizeAuditValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+  return String(value);
+}
+
+async function getCurrentActor(): Promise<CurrentActor> {
+  const { data: authData } = await supabase.auth.getUser();
+  const authUser = authData.user;
+  const fallbackEmail = authUser?.email ?? 'desconhecido@sistema.local';
+  const fallbackName = (authUser?.user_metadata?.full_name as string | undefined) ?? fallbackEmail;
+
+  if (!authUser?.id) {
+    return {
+      userId: null,
+      userEmail: fallbackEmail,
+      userName: fallbackName,
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('user_id', authUser.id)
+    .maybeSingle();
+
+  return {
+    userId: authUser.id,
+    userEmail: fallbackEmail,
+    userName: profile?.full_name?.trim() || fallbackName,
+  };
+}
+
+async function insertAuditLogs(entries: Array<Record<string, unknown>>) {
+  if (entries.length === 0) return;
+  const { error } = await supabase.from('audit_logs').insert(entries);
+  if (error) throw error;
+}
+
 export function isFinalizedSituation(situation: string): boolean {
   return FINALIZED_SITUATIONS.includes(situation as Situation);
 }
@@ -107,25 +184,96 @@ export async function getCaseById(id: string) {
 }
 
 export async function createCase(payload: any) {
+  const actor = await getCurrentActor();
+  const payloadWithActor = {
+    ...payload,
+    updated_by: actor.userName,
+  };
+
   const { data, error } = await supabase
     .from('cases')
-    .insert([payload])
+    .insert([payloadWithActor])
     .select()
     .single();
 
   if (error) throw error;
+
+  await insertAuditLogs([
+    {
+      case_id: data.id,
+      user_id: actor.userId,
+      user_email: actor.userEmail,
+      user_name: actor.userName,
+      action: 'Criação',
+      field: null,
+      old_value: null,
+      new_value: 'Caso registrado no sistema',
+    },
+  ]);
+
   return data;
 }
 
-export async function updateCase(id: string, payload: any) {
+export async function updateCase(id: string, payload: any, options?: UpdateCaseOptions) {
+  const actor = await getCurrentActor();
+  const { data: previous, error: previousError } = await supabase
+    .from('cases')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (previousError) throw previousError;
+
+  const payloadWithActor = {
+    ...payload,
+    updated_by: actor.userName,
+  };
+
   const { data, error } = await supabase
     .from('cases')
-    .update(payload)
+    .update(payloadWithActor)
     .eq('id', id)
     .select()
     .single();
 
   if (error) throw error;
+
+  const fieldLabels = { ...DEFAULT_FIELD_LABELS, ...(options?.fieldLabels ?? {}) };
+  const action = options?.auditAction ?? 'Edição';
+
+  const auditRows = Object.entries(payload).reduce<Array<Record<string, unknown>>>((acc, [field, newRaw]) => {
+    const oldRaw = previous[field];
+    const oldValue = normalizeAuditValue(oldRaw);
+    const newValue = normalizeAuditValue(newRaw);
+    if (oldValue === newValue) return acc;
+
+    acc.push({
+      case_id: id,
+      user_id: actor.userId,
+      user_email: actor.userEmail,
+      user_name: actor.userName,
+      action,
+      field: fieldLabels[field] ?? field,
+      old_value: oldValue || null,
+      new_value: newValue || null,
+    });
+    return acc;
+  }, []);
+
+  if (auditRows.length === 0) {
+    auditRows.push({
+      case_id: id,
+      user_id: actor.userId,
+      user_email: actor.userEmail,
+      user_name: actor.userName,
+      action,
+      field: null,
+      old_value: null,
+      new_value: 'Sem alterações de valor',
+    });
+  }
+
+  await insertAuditLogs(auditRows);
   return data;
 }
 
@@ -134,6 +282,16 @@ export async function getAuditLogs(caseId: string) {
     .from('audit_logs')
     .select('*')
     .eq('case_id', caseId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function listAuditLogs() {
+  const { data, error } = await supabase
+    .from('audit_logs')
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (error) throw error;

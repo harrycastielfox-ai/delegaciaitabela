@@ -73,11 +73,16 @@ function toInvestigationCase(row: any): InvestigationCase {
 }
 
 function toAuditEntry(row: any): AuditEntry {
+  const userName = row.user_name ?? row.user ?? row.actor ?? 'Sistema';
+  const userEmail = row.user_email ?? '';
   return {
     id: row.id,
     caseId: row.case_id ?? row.caseId ?? '',
     timestamp: row.timestamp ?? row.created_at ?? new Date().toISOString(),
-    user: row.user ?? row.user_name ?? row.actor ?? 'Sistema',
+    user: userName,
+    userId: row.user_id ?? undefined,
+    userEmail,
+    userName,
     action: row.action ?? 'Atualização',
     field: row.field ?? '',
     oldValue: row.old_value ?? row.oldValue ?? '',
@@ -197,6 +202,8 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
         diligence_status: moveForm.diligenceStatus,
         observations: moveForm.observations || null,
         pending_actions: moveForm.pendingActions || null,
+      }, {
+        auditAction: 'Movimentação',
       });
 
       setMoveModalOpen(false);
@@ -400,7 +407,10 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
                 <div className={`absolute left-0 top-4 h-3.5 w-3.5 rounded-full border-2 border-background ${i === 0 ? 'bg-primary' : 'bg-muted'}`} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-foreground">
-                    <span className="font-semibold">{entry.user}</span>
+                    <span className="font-semibold">{entry.userName || entry.user}</span>
+                    {entry.userEmail && (
+                      <span className="ml-1 text-[10px] text-muted-foreground">({entry.userEmail})</span>
+                    )}
                     <span className="mx-1.5 text-muted-foreground">·</span>
                     <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold text-accent-foreground">{entry.action}</span>
                     {entry.field && (
