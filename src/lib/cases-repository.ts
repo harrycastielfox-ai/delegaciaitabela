@@ -187,7 +187,7 @@ export async function createCase(payload: any) {
   const actor = await getCurrentActor();
   const payloadWithActor = {
     ...payload,
-    updated_by: actor.userName,
+    updated_by: actor.userId
   };
 
   const { data, error } = await supabase
@@ -226,7 +226,7 @@ export async function updateCase(id: string, payload: any, options?: UpdateCaseO
 
   const payloadWithActor = {
     ...payload,
-    updated_by: actor.userName,
+    updated_by: actor.userId
   };
 
   const { data, error } = await supabase
