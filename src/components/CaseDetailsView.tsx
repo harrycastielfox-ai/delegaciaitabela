@@ -11,10 +11,22 @@ import {
   isCaseNoDeadline,
   isCaseNoRecentUpdate,
   isCaseOverdue,
+  updateCase,
 } from '@/lib/cases-repository';
-import type { AuditEntry, InvestigationCase } from '@/lib/types';
+import type { AuditEntry, DiligenceStatus, InvestigationCase, Situation } from '@/lib/types';
 import { PriorityBadge, SituationBadge, SeverityBadge } from './CaseListView';
 import { generateCasePDF } from '@/lib/pdf-generator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+const situationOptions: Situation[] = ['Instaurado', 'Em andamento', 'Relatado', 'Remetido', 'Arquivado'];
+const diligenceStatusOptions: DiligenceStatus[] = ['Pendente', 'Em execução', 'Concluída'];
 
 function toDateOnly(value?: string | null): string {
   if (!value) return '';
@@ -99,6 +111,15 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [moveForm, setMoveForm] = useState({
+    situation: 'Instaurado' as Situation,
+    diligenceStatus: 'Pendente' as DiligenceStatus,
+    observations: '',
+    pendingActions: '',
+  });
+  const [savingMovement, setSavingMovement] = useState(false);
+  const [movementError, setMovementError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const loadCaseDetails = async () => {
@@ -150,6 +171,43 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
 
     return alerts;
   }, [caseData]);
+
+  const openMovementModal = () => {
+    if (!caseData) return;
+    setMovementError(null);
+    setMoveForm({
+      situation: caseData.situation,
+      diligenceStatus: caseData.diligenceStatus,
+      observations: caseData.observations || '',
+      pendingActions: caseData.pendingActions || '',
+    });
+    setMoveModalOpen(true);
+  };
+
+  const saveMovement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseData) return;
+
+    setSavingMovement(true);
+    setMovementError(null);
+
+    try {
+      await updateCase(caseData.id, {
+        situation: moveForm.situation,
+        diligence_status: moveForm.diligenceStatus,
+        observations: moveForm.observations || null,
+        pending_actions: moveForm.pendingActions || null,
+      });
+
+      setMoveModalOpen(false);
+      await loadCaseDetails();
+    } catch (err) {
+      console.error('Erro ao salvar movimentação do caso:', err);
+      setMovementError('Não foi possível salvar a movimentação. Tente novamente.');
+    } finally {
+      setSavingMovement(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -213,6 +271,9 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
         <div className="flex gap-2">
           <button onClick={() => generateCasePDF(c)} className="btn-secondary">
             <FileDown className="h-4 w-4" /> Gerar PDF
+          </button>
+          <button type="button" onClick={openMovementModal} className="btn-secondary">
+            Movimentar
           </button>
           <Link to="/cases/$caseId/edit" params={{ caseId: c.id }} className="btn-primary">
             <Edit className="h-4 w-4" /> Editar
@@ -366,6 +427,93 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
           </div>
         )}
       </div>
+
+      <Dialog open={moveModalOpen} onOpenChange={setMoveModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Movimentar caso</DialogTitle>
+            <DialogDescription>
+              Atualize situação, diligências e observações deste caso.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={saveMovement} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Situação
+              </label>
+              <select
+                className="form-input"
+                value={moveForm.situation}
+                onChange={(e) => setMoveForm((prev) => ({ ...prev, situation: e.target.value as Situation }))}
+                disabled={savingMovement}
+              >
+                {situationOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Status das diligências
+              </label>
+              <select
+                className="form-input"
+                value={moveForm.diligenceStatus}
+                onChange={(e) => setMoveForm((prev) => ({ ...prev, diligenceStatus: e.target.value as DiligenceStatus }))}
+                disabled={savingMovement}
+              >
+                {diligenceStatusOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Observações
+              </label>
+              <textarea
+                className="form-input min-h-24 resize-y"
+                value={moveForm.observations}
+                onChange={(e) => setMoveForm((prev) => ({ ...prev, observations: e.target.value }))}
+                disabled={savingMovement}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Diligências pendentes
+              </label>
+              <textarea
+                className="form-input min-h-24 resize-y"
+                value={moveForm.pendingActions}
+                onChange={(e) => setMoveForm((prev) => ({ ...prev, pendingActions: e.target.value }))}
+                disabled={savingMovement}
+              />
+            </div>
+
+            {movementError && (
+              <p className="text-xs font-medium text-destructive">{movementError}</p>
+            )}
+
+            <DialogFooter>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setMoveModalOpen(false)}
+                disabled={savingMovement}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn-primary" disabled={savingMovement}>
+                {savingMovement ? 'Salvando...' : 'Salvar movimentação'}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
