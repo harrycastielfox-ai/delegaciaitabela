@@ -40,6 +40,9 @@ export interface AuditEntry {
   caseId: string;
   timestamp: string;
   user: string;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
   action: string;
   field: string;
   oldValue: string;

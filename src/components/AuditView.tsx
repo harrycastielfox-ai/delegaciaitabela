@@ -1,37 +1,84 @@
-import { useState, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { History, ArrowRight, Search, Filter, ChevronDown, FileText } from 'lucide-react';
+import { History, ArrowRight } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
-import { getAuditLog, getCases, subscribe } from '@/lib/case-store';
+import { listAuditLogs, listCases } from '@/lib/cases-repository';
+import type { AuditEntry } from '@/lib/types';
+
+function toAuditEntry(row: any): AuditEntry {
+  const userName = row.user_name ?? row.user ?? 'Sistema';
+  return {
+    id: row.id,
+    caseId: row.case_id ?? '',
+    timestamp: row.created_at ?? row.timestamp ?? new Date().toISOString(),
+    user: userName,
+    userId: row.user_id ?? undefined,
+    userEmail: row.user_email ?? '',
+    userName,
+    action: row.action ?? 'Atualização',
+    field: row.field ?? '',
+    oldValue: row.old_value ?? '',
+    newValue: row.new_value ?? '',
+  };
+}
 
 export function AuditView() {
-  const entries = useSyncExternalStore(subscribe, () => getAuditLog(), () => getAuditLog());
-  const cases = useSyncExternalStore(subscribe, () => getCases(), () => getCases());
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [casePpeMap, setCasePpeMap] = useState<Map<string, string>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterCase, setFilterCase] = useState('');
   const [filterAction, setFilterAction] = useState('');
   const [filterUser, setFilterUser] = useState('');
 
-  const users = useMemo(() => [...new Set(entries.map((e) => e.user))].sort(), [entries]);
-  const actions = useMemo(() => [...new Set(entries.map((e) => e.action))].sort(), [entries]);
+  useEffect(() => {
+    const loadAuditData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [auditRows, caseRows] = await Promise.all([listAuditLogs(), listCases()]);
+        setEntries((auditRows ?? []).map(toAuditEntry));
 
-  const casePpeMap = useMemo(() => {
-    const m = new Map<string, string>();
-    cases.forEach((c) => m.set(c.id, c.ppe));
-    return m;
-  }, [cases]);
+        const ppeMap = new Map<string, string>();
+        caseRows.forEach((caseData) => ppeMap.set(caseData.id, caseData.ppe));
+        setCasePpeMap(ppeMap);
+      } catch (err) {
+        console.error('Erro ao carregar auditoria:', err);
+        setError('Não foi possível carregar os registros de auditoria.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAuditData();
+  }, []);
+
+  const users = useMemo(
+    () => [...new Set(entries.map((e) => e.userName || e.user).filter(Boolean))].sort(),
+    [entries],
+  );
+  const actions = useMemo(() => [...new Set(entries.map((e) => e.action))].sort(), [entries]);
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
       if (filterCase && e.caseId !== filterCase) return false;
       if (filterAction && e.action !== filterAction) return false;
-      if (filterUser && e.user !== filterUser) return false;
+      if (filterUser && (e.userName || e.user) !== filterUser) return false;
       return true;
     });
   }, [entries, filterCase, filterAction, filterUser]);
 
   const activeFilters = [filterCase, filterAction, filterUser].filter(Boolean).length;
 
-  const selectCls = "h-9 rounded-md border border-border bg-input px-3 text-xs text-foreground focus:outline-none focus:border-primary transition-colors";
+  const selectCls = 'h-9 rounded-md border border-border bg-input px-3 text-xs text-foreground focus:outline-none focus:border-primary transition-colors';
+
+  if (loading) {
+    return <p className="py-12 text-sm text-muted-foreground">Carregando auditoria...</p>;
+  }
+
+  if (error) {
+    return <p className="py-12 text-sm text-destructive">{error}</p>;
+  }
 
   return (
     <div className="space-y-6">
@@ -43,11 +90,10 @@ export function AuditView() {
         <p className="text-sm text-muted-foreground">Histórico completo de alterações · {filtered.length} registro(s)</p>
       </div>
 
-      {/* Filters */}
       <div className="section-card flex flex-wrap items-center gap-3">
         <select value={filterCase} onChange={(e) => setFilterCase(e.target.value)} className={selectCls}>
           <option value="">Todos os casos</option>
-          {cases.map((c) => <option key={c.id} value={c.id}>{c.ppe}</option>)}
+          {[...casePpeMap.entries()].map(([id, ppe]) => <option key={id} value={id}>{ppe}</option>)}
         </select>
         <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className={selectCls}>
           <option value="">Todos os usuários</option>
@@ -91,7 +137,10 @@ export function AuditView() {
                       {casePpeMap.get(e.caseId) || e.caseId}
                     </Link>
                   </td>
-                  <td className="px-4 py-3.5 text-xs text-foreground">{e.user}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="text-xs text-foreground font-semibold">{e.userName || e.user}</div>
+                    {e.userEmail && <div className="text-[11px] text-muted-foreground">{e.userEmail}</div>}
+                  </td>
                   <td className="px-4 py-3.5">
                     <span className="rounded-full bg-accent px-2.5 py-0.5 text-[9px] font-bold text-accent-foreground">{e.action}</span>
                   </td>
