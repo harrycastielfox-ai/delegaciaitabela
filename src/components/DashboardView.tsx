@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from '@tanstack/react-router';
 import {
@@ -8,10 +8,15 @@ import {
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area,
+  PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { getCases, subscribe } from '@/lib/case-store';
-import { generateAlerts } from '@/lib/dummy-data';
+import {
+  isCaseNoDeadline,
+  isCaseNoRecentUpdate,
+  isCaseOverdue,
+  isFinalizedSituation,
+  listCases,
+} from '@/lib/cases-repository';
 import type { InvestigationCase } from '@/lib/types';
 
 const anim = (delay = 0) => ({
@@ -20,11 +25,25 @@ const anim = (delay = 0) => ({
   transition: { delay, duration: 0.35 },
 });
 
-function StatCard({ label, value, icon: Icon, accent, subtitle }: {
-  label: string; value: number; icon: any; accent?: string; subtitle?: string;
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+  subtitle,
+  to,
+  search,
+}: {
+  label: string;
+  value: number;
+  icon: any;
+  accent?: string;
+  subtitle?: string;
+  to?: '/cases';
+  search?: Record<string, string>;
 }) {
-  return (
-    <motion.div {...anim()} className="stat-card">
+  const content = (
+    <>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -35,6 +54,27 @@ function StatCard({ label, value, icon: Icon, accent, subtitle }: {
           <Icon className={`h-5 w-5 ${accent ? 'text-foreground' : 'text-primary'}`} />
         </div>
       </div>
+    </>
+  );
+
+  if (!to) {
+    return (
+      <motion.div {...anim()} className="stat-card">
+        {content}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div {...anim()}>
+      <Link
+        to={to}
+        search={search}
+        className="stat-card block transition-transform hover:-translate-y-0.5"
+        aria-label={`Filtrar casos: ${label}`}
+      >
+        {content}
+      </Link>
     </motion.div>
   );
 }
@@ -57,30 +97,55 @@ const tooltipStyle = {
 };
 
 export function DashboardView() {
-  const cases = useSyncExternalStore(subscribe, getCases, getCases);
-  const alerts = useMemo(() => generateAlerts(cases), [cases]);
+  const [cases, setCases] = useState<InvestigationCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+
+  const loadCases = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await listCases();
+      setCases(data);
+      setLastUpdatedAt(new Date());
+    } catch (err) {
+      console.error('Erro ao carregar dashboard:', err);
+      setError('Não foi possível carregar os dados do dashboard.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCases();
+  }, []);
 
   const stats = useMemo(() => {
     const total = cases.length;
     const inProgress = cases.filter((c) => c.situation === 'Em andamento').length;
-    const closed = cases.filter((c) => c.situation === 'Relatado' || c.situation === 'Arquivado').length;
+    const closed = cases.filter((c) => isFinalizedSituation(c.situation)).length;
     const highPriority = cases.filter((c) => c.priority === 'Alta').length;
-    const overdue = alerts.filter((a) => a.type === 'overdue').length;
-    const noDeadline = cases.filter((c) => !c.deadline && c.situation !== 'Relatado' && c.situation !== 'Arquivado').length;
-    const noRecentUpdate = alerts.filter((a) => a.type === 'no_update').length;
+    const overdue = cases.filter((c) => isCaseOverdue(c)).length;
+    const noDeadline = cases.filter((c) => isCaseNoDeadline(c)).length;
+    const noRecentUpdate = cases.filter((c) => isCaseNoRecentUpdate(c)).length;
+
     return { total, inProgress, closed, highPriority, overdue, noDeadline, noRecentUpdate };
-  }, [cases, alerts]);
+  }, [cases]);
 
   const chartByStatus = useMemo(() => {
     const map: Record<string, number> = {};
-    cases.forEach((c) => { map[c.situation] = (map[c.situation] || 0) + 1; });
+    cases.forEach((c) => {
+      map[c.situation] = (map[c.situation] || 0) + 1;
+    });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [cases]);
 
   const chartByTeam = useMemo(() => {
     const map: Record<string, number> = {};
     cases.forEach((c) => {
-      const team = c.team.split(' - ')[0];
+      const team = (c.team || 'Sem equipe').split(' - ')[0];
       map[team] = (map[team] || 0) + 1;
     });
     return Object.entries(map).map(([name, count]) => ({ name, count }));
@@ -88,49 +153,112 @@ export function DashboardView() {
 
   const chartBySeverity = useMemo(() => {
     const map: Record<string, number> = {};
-    cases.forEach((c) => { map[c.severity] = (map[c.severity] || 0) + 1; });
+    cases.forEach((c) => {
+      map[c.severity] = (map[c.severity] || 0) + 1;
+    });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [cases]);
 
   const criticalCases = useMemo(() => {
-    return cases.filter((c) => {
-      if (c.situation === 'Relatado' || c.situation === 'Arquivado') return false;
-      const isOverdue = c.deadline && new Date(c.deadline) < new Date('2025-04-14');
-      const isHighPriority = c.priority === 'Alta';
-      const isCVLI = c.severity === 'CVLI';
-      return isOverdue || (isHighPriority && isCVLI);
-    }).slice(0, 5);
+    return cases
+      .filter((c) => {
+        if (isFinalizedSituation(c.situation)) return false;
+        return isCaseOverdue(c) || (c.priority === 'Alta' && c.severity === 'CVLI');
+      })
+      .slice(0, 5);
   }, [cases]);
 
-  const topAlerts = alerts.slice(0, 6);
+  const topAlerts = useMemo(() => {
+    const alerts = cases.flatMap((c) => {
+      const caseAlerts = [] as Array<{
+        id: string;
+        caseId: string;
+        casePpe: string;
+        message: string;
+        severity: 'high' | 'medium' | 'low';
+      }>;
+
+      if (isCaseOverdue(c)) {
+        caseAlerts.push({
+          id: `overdue-${c.id}`,
+          caseId: c.id,
+          casePpe: c.ppe,
+          message: 'Prazo vencido',
+          severity: 'high',
+        });
+      }
+
+      if (isCaseNoDeadline(c)) {
+        caseAlerts.push({
+          id: `no-deadline-${c.id}`,
+          caseId: c.id,
+          casePpe: c.ppe,
+          message: 'Sem prazo definido',
+          severity: 'low',
+        });
+      }
+
+      if (isCaseNoRecentUpdate(c)) {
+        caseAlerts.push({
+          id: `no-update-${c.id}`,
+          caseId: c.id,
+          casePpe: c.ppe,
+          message: 'Sem atualização há mais de 15 dias',
+          severity: 'medium',
+        });
+      }
+
+      return caseAlerts;
+    });
+
+    const rank = { high: 0, medium: 1, low: 2 };
+    return alerts.sort((a, b) => rank[a.severity] - rank[b.severity]).slice(0, 6);
+  }, [cases]);
+
+  const refreshLabel = lastUpdatedAt
+    ? lastUpdatedAt.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+    : '---';
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-1">
+          <div className="mb-1 flex items-center gap-3">
             <Activity className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-extrabold tracking-tight">Painel de Controle</h1>
           </div>
           <p className="text-sm text-muted-foreground">Visão operacional dos inquéritos policiais</p>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          <RefreshCw className="h-3 w-3" />
-          <span>Atualizado: 14/04/2025 08:00</span>
-        </div>
+        <button onClick={loadCases} className="flex items-center gap-2 text-[10px] text-muted-foreground hover:text-foreground">
+          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+          <span>Atualizado: {refreshLabel}</span>
+        </button>
       </div>
 
       {/* Stat Cards - Row 1 */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-7">
         <StatCard label="Total" value={stats.total} icon={FileText} />
-        <StatCard label="Em Andamento" value={stats.inProgress} icon={Clock} accent="bg-chart-2/15" />
-        <StatCard label="Finalizados" value={stats.closed} icon={CheckCircle} accent="bg-primary/10" />
-        <StatCard label="Alta Prioridade" value={stats.highPriority} icon={TrendingUp} accent="bg-warning/15" />
-        <StatCard label="Vencidos" value={stats.overdue} icon={AlertTriangle} accent="bg-destructive/15" subtitle="Prazo expirado" />
-        <StatCard label="Sem Prazo" value={stats.noDeadline} icon={CalendarOff} accent="bg-chart-5/15" />
-        <StatCard label="Sem Atualização" value={stats.noRecentUpdate} icon={AlertCircle} accent="bg-warning/15" subtitle="+15 dias" />
+        <StatCard label="Em Andamento" value={stats.inProgress} icon={Clock} accent="bg-chart-2/15" to="/cases" search={{ situation: 'Em andamento' }} />
+        <StatCard label="Finalizados" value={stats.closed} icon={CheckCircle} accent="bg-primary/10" to="/cases" search={{ finalized: 'true' }} />
+        <StatCard label="Alta Prioridade" value={stats.highPriority} icon={TrendingUp} accent="bg-warning/15" to="/cases" search={{ priority: 'Alta' }} />
+        <StatCard label="Vencidos" value={stats.overdue} icon={AlertTriangle} accent="bg-destructive/15" subtitle="Prazo expirado" to="/cases" search={{ overdue: 'true' }} />
+        <StatCard label="Sem Prazo" value={stats.noDeadline} icon={CalendarOff} accent="bg-chart-5/15" to="/cases" search={{ noDeadline: 'true' }} />
+        <StatCard label="Sem Atualização" value={stats.noRecentUpdate} icon={AlertCircle} accent="bg-warning/15" subtitle="+15 dias" to="/cases" search={{ noUpdate: 'true' }} />
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <p>{error}</p>
+          <button onClick={loadCases} className="mt-2 text-xs font-semibold underline">Tentar novamente</button>
+        </div>
+      )}
+
+      {!loading && !error && cases.length === 0 && (
+        <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          Nenhum inquérito encontrado para exibir no dashboard.
+        </div>
+      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -210,7 +338,7 @@ export function DashboardView() {
               <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Alertas Recentes</h3>
             </div>
             <Link to="/alerts" className="text-[10px] font-semibold text-primary hover:underline">
-              Ver todos ({alerts.length})
+              Ver todos ({topAlerts.length})
             </Link>
           </div>
           {topAlerts.length === 0 ? (
