@@ -1,14 +1,77 @@
-import { useSyncExternalStore, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Edit, FileDown, Clock, Shield, Users, MapPin,
-  Scale, FileText, AlertTriangle, CalendarOff, User, Calendar,
+  Scale, FileText, AlertTriangle, User, Calendar,
 } from 'lucide-react';
-import { getCaseById, getAuditLog, subscribe } from '@/lib/case-store';
-import { generateAlerts } from '@/lib/dummy-data';
+import {
+  getAuditLogs,
+  getCaseById,
+  isCaseNoDeadline,
+  isCaseNoRecentUpdate,
+  isCaseOverdue,
+} from '@/lib/cases-repository';
+import type { AuditEntry, InvestigationCase } from '@/lib/types';
 import { PriorityBadge, SituationBadge, SeverityBadge } from './CaseListView';
 import { generateCasePDF } from '@/lib/pdf-generator';
+
+function toDateOnly(value?: string | null): string {
+  if (!value) return '';
+  return value.includes('T') ? value.split('T')[0] : value;
+}
+
+function toInvestigationCase(row: any): InvestigationCase {
+  const createdAt = toDateOnly(row.created_at);
+  const updatedAt = toDateOnly(row.updated_at) || createdAt;
+  const daysElapsed = createdAt
+    ? Math.max(0, Math.ceil((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  return {
+    id: row.id,
+    ppe: row.ppe ?? '',
+    physicalNumber: row.physical_number ?? '',
+    priority: row.priority ?? 'Média',
+    createdAt,
+    deadline: toDateOnly(row.deadline),
+    daysElapsed,
+    crimeClassification: row.crime_classification ?? '',
+    severity: row.severity ?? 'Outros',
+    type: row.type ?? 'IP',
+    victim: row.victim ?? '',
+    suspect: row.suspect ?? '',
+    team: row.team ?? '',
+    officer: row.officer ?? '',
+    location: row.location ?? '',
+    district: row.district ?? '',
+    motivation: row.motivation ?? '',
+    diligenceStatus: row.diligence_status ?? 'Pendente',
+    situation: row.situation ?? 'Instaurado',
+    pendingActions: row.pending_actions ?? '',
+    observations: row.observations ?? '',
+    protectiveMeasure: row.protective_measure ?? false,
+    processNumber: row.process_number ?? '',
+    reportSent: row.report_sent ?? false,
+    reportDate: toDateOnly(row.report_date),
+    legalRepresentations: row.legal_representations ?? 0,
+    updatedAt,
+    updatedBy: row.updated_by ?? 'Sistema',
+  };
+}
+
+function toAuditEntry(row: any): AuditEntry {
+  return {
+    id: row.id,
+    caseId: row.case_id ?? row.caseId ?? '',
+    timestamp: row.timestamp ?? row.created_at ?? new Date().toISOString(),
+    user: row.user ?? row.user_name ?? row.actor ?? 'Sistema',
+    action: row.action ?? 'Atualização',
+    field: row.field ?? '',
+    oldValue: row.old_value ?? row.oldValue ?? '',
+    newValue: row.new_value ?? row.newValue ?? '',
+  };
+}
 
 function DetailField({ label, value }: { label: string; value?: string | number | boolean }) {
   if (value === undefined || value === null || value === '' || value === false) return null;
@@ -31,16 +94,83 @@ function SectionHeader({ title, icon: Icon }: { title: string; icon: any }) {
 }
 
 export function CaseDetailsView({ caseId }: { caseId: string }) {
-  const c = useSyncExternalStore(subscribe, () => getCaseById(caseId), () => getCaseById(caseId));
-  const auditEntries = useSyncExternalStore(subscribe, () => getAuditLog(caseId), () => getAuditLog(caseId));
+  const [caseData, setCaseData] = useState<InvestigationCase | null>(null);
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const navigate = useNavigate();
 
-  const caseAlerts = useMemo(() => {
-    if (!c) return [];
-    return generateAlerts([c]);
-  }, [c]);
+  const loadCaseDetails = async () => {
+    setLoading(true);
+    setError(null);
+    setNotFound(false);
 
-  if (!c) {
+    try {
+      const [rawCase, rawAudit] = await Promise.all([
+        getCaseById(caseId),
+        getAuditLogs(caseId),
+      ]);
+
+      setCaseData(rawCase ? toInvestigationCase(rawCase) : null);
+      setAuditEntries((rawAudit ?? []).map(toAuditEntry));
+      if (!rawCase) setNotFound(true);
+    } catch (err: any) {
+      if (err?.code === 'PGRST116') {
+        setNotFound(true);
+        setCaseData(null);
+        setAuditEntries([]);
+      } else {
+        console.error('Erro ao carregar detalhes do caso:', err);
+        setError('Não foi possível carregar os detalhes do inquérito.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCaseDetails();
+  }, [caseId]);
+
+  const caseAlerts = useMemo(() => {
+    if (!caseData) return [] as Array<{ id: string; message: string; severity: 'high' | 'medium' | 'low' }>;
+
+    const alerts = [] as Array<{ id: string; message: string; severity: 'high' | 'medium' | 'low' }>;
+
+    if (isCaseOverdue(caseData)) {
+      alerts.push({ id: 'overdue', message: 'Prazo vencido', severity: 'high' });
+    }
+    if (isCaseNoDeadline(caseData)) {
+      alerts.push({ id: 'no-deadline', message: 'Sem prazo definido', severity: 'low' });
+    }
+    if (isCaseNoRecentUpdate(caseData)) {
+      alerts.push({ id: 'no-update', message: 'Sem atualização há mais de 15 dias', severity: 'medium' });
+    }
+
+    return alerts;
+  }, [caseData]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <FileText className="h-12 w-12 text-muted-foreground/20" />
+        <p className="mt-4 text-muted-foreground">Carregando detalhes do caso...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <FileText className="h-12 w-12 text-destructive/40" />
+        <p className="mt-4 text-destructive">{error}</p>
+        <button onClick={loadCaseDetails} className="mt-4 text-sm font-semibold text-primary hover:underline">Tentar novamente</button>
+      </div>
+    );
+  }
+
+  if (notFound || !caseData) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
         <FileText className="h-12 w-12 text-muted-foreground/20" />
@@ -50,7 +180,8 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
     );
   }
 
-  const isOverdue = c.deadline && new Date(c.deadline) < new Date('2025-04-14') && c.situation !== 'Relatado' && c.situation !== 'Arquivado';
+  const c = caseData;
+  const isOverdue = isCaseOverdue(c);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
