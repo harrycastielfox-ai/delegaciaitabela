@@ -1,10 +1,9 @@
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Clock, AlertCircle, Info, Bell, Shield, ArrowUpRight, Filter } from 'lucide-react';
+import { AlertTriangle, Clock, AlertCircle, Info, Bell, Shield, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
-import { getCases, subscribe } from '@/lib/case-store';
-import { generateAlerts } from '@/lib/dummy-data';
-import type { Alert } from '@/lib/types';
+import { generateAlertsFromCases, listCases } from '@/lib/cases-repository';
+import type { InvestigationCase } from '@/lib/types';
 
 const iconMap = {
   overdue: AlertTriangle,
@@ -31,9 +30,30 @@ const severityLabel: Record<string, string> = {
 const severityOrder = ['high', 'medium', 'low'] as const;
 
 export function AlertsView() {
-  const cases = useSyncExternalStore(subscribe, getCases, getCases);
-  const alerts = useMemo(() => generateAlerts(cases), [cases]);
+  const [cases, setCases] = useState<InvestigationCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterSeverity, setFilterSeverity] = useState<string>('');
+  const alerts = useMemo(() => generateAlertsFromCases(cases), [cases]);
+
+  const loadCases = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await listCases();
+      setCases(data);
+    } catch (err) {
+      console.error('Erro ao carregar alertas:', err);
+      setError('Não foi possível carregar os alertas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCases();
+  }, []);
 
   const filteredAlerts = useMemo(() => {
     if (!filterSeverity) return alerts;
@@ -65,7 +85,17 @@ export function AlertsView() {
           </div>
           <p className="text-sm text-muted-foreground">{alerts.length} alerta(s) ativo(s) no sistema</p>
         </div>
+        <button onClick={loadCases} className="btn-secondary">
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+        </button>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <p>{error}</p>
+          <button onClick={loadCases} className="mt-2 text-xs font-semibold underline">Tentar novamente</button>
+        </div>
+      )}
 
       {/* Severity summary cards */}
       <div className="grid grid-cols-3 gap-4">
@@ -89,7 +119,12 @@ export function AlertsView() {
         })}
       </div>
 
-      {filteredAlerts.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Bell className="h-12 w-12 text-muted-foreground/20" />
+          <p className="mt-4 text-muted-foreground">Carregando alertas...</p>
+        </div>
+      ) : filteredAlerts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Bell className="h-12 w-12 text-muted-foreground/20" />
           <p className="mt-4 text-muted-foreground">Nenhum alerta {filterSeverity ? 'para este filtro' : 'no momento'}.</p>

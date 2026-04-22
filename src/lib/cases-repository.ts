@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { InvestigationCase, Situation } from './types';
+import type { Alert, InvestigationCase, Situation } from './types';
 
 const FINALIZED_SITUATIONS: Situation[] = ['Relatado', 'Arquivado', 'Remetido'];
 
@@ -160,6 +160,67 @@ export function isCaseNoRecentUpdate(
   const diffMs = now.getTime() - lastUpdate.getTime();
   const daysSinceUpdate = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return daysSinceUpdate > thresholdDays;
+}
+
+export function generateAlertsFromCases(cases: InvestigationCase[], now: Date = new Date()): Alert[] {
+  const alerts: Alert[] = [];
+
+  cases.forEach((caseData) => {
+    const isFinalized = isFinalizedSituation(caseData.situation);
+
+    if (isCaseOverdue(caseData, now)) {
+      const deadline = new Date(caseData.deadline);
+      const daysOverdue = Math.ceil((now.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24));
+      alerts.push({
+        id: `alert-overdue-${caseData.id}`,
+        caseId: caseData.id,
+        casePpe: caseData.ppe,
+        type: 'overdue',
+        message: `Prazo vencido há ${Math.max(1, daysOverdue)} dia(s)`,
+        severity: 'high',
+        createdAt: now.toISOString(),
+      });
+    }
+
+    if (!isFinalized && caseData.deadline) {
+      const deadline = new Date(caseData.deadline);
+      if (!Number.isNaN(deadline.getTime())) {
+        const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays <= 5) {
+          alerts.push({
+            id: `alert-near-deadline-${caseData.id}`,
+            caseId: caseData.id,
+            casePpe: caseData.ppe,
+            type: 'near_deadline',
+            message:
+              diffDays <= 2
+                ? `Prazo vence em ${diffDays} dia(s) — URGENTE`
+                : `Prazo vence em ${diffDays} dia(s)`,
+            severity: diffDays <= 2 ? 'high' : 'medium',
+            createdAt: now.toISOString(),
+          });
+        }
+      }
+    }
+
+    if (isCaseNoRecentUpdate(caseData, now, 15)) {
+      const reference = caseData.updatedAt || caseData.createdAt;
+      const lastUpdate = new Date(reference);
+      const daysSinceUpdate = Math.ceil((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+      alerts.push({
+        id: `alert-no-update-${caseData.id}`,
+        caseId: caseData.id,
+        casePpe: caseData.ppe,
+        type: 'no_update',
+        message: `Sem atualização há ${daysSinceUpdate} dia(s)`,
+        severity: daysSinceUpdate > 30 ? 'high' : 'medium',
+        createdAt: now.toISOString(),
+      });
+    }
+  });
+
+  const severityOrder = { high: 0, medium: 1, low: 2 };
+  return alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 }
 
 export async function listCases(): Promise<InvestigationCase[]> {
