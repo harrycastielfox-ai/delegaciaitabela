@@ -369,6 +369,52 @@ export async function updateCase(id: string, payload: any, options?: UpdateCaseO
   return data;
 }
 
+export async function deleteCase(id: string) {
+  const actor = await getCurrentActor();
+
+  const { data: caseToDelete, error: caseError } = await supabase
+    .from('cases')
+    .select('id, ppe, physical_number')
+    .eq('id', id)
+    .single();
+
+  if (caseError) throw caseError;
+
+  const ppe = caseToDelete?.ppe ?? '';
+  const physicalNumber = caseToDelete?.physical_number ?? '';
+  const identifierText = [
+    `PPE: ${ppe || 'N/D'}`,
+    `Nº Físico: ${physicalNumber || 'N/D'}`,
+    `ID: ${caseToDelete.id}`,
+  ].join(' | ');
+
+  await insertAuditLogs([
+    {
+      case_id: null,
+      user_id: actor.userId,
+      user_email: actor.userEmail,
+      user_name: actor.userName,
+      action: 'Exclusão',
+      field: 'Inquérito',
+      old_value: ppe || null,
+      new_value: `Inquérito excluído: ${identifierText}`,
+    },
+  ]);
+
+  const { error: deleteError } = await supabase
+    .from('cases')
+    .delete()
+    .eq('id', id);
+
+  if (deleteError) throw deleteError;
+
+  return {
+    id: caseToDelete.id,
+    ppe,
+    physicalNumber,
+  };
+}
+
 export async function getAuditLogs(caseId: string) {
   const { data, error } = await supabase
     .from('audit_logs')
