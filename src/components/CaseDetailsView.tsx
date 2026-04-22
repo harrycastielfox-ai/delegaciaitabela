@@ -6,6 +6,7 @@ import {
   Scale, FileText, AlertTriangle, User, Calendar,
 } from 'lucide-react';
 import {
+  deleteCase,
   getAuditLogs,
   getCaseById,
   isCaseNoDeadline,
@@ -125,6 +126,9 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
   });
   const [savingMovement, setSavingMovement] = useState(false);
   const [movementError, setMovementError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingCase, setDeletingCase] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const loadCaseDetails = async () => {
@@ -216,6 +220,25 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!caseData) return;
+
+    setDeletingCase(true);
+    setDeleteError(null);
+
+    try {
+      await deleteCase(caseData.id);
+      setDeleteModalOpen(false);
+      alert('Inquérito excluído com sucesso.');
+      navigate({ to: '/cases' });
+    } catch (err) {
+      console.error('Erro ao excluir caso:', err);
+      setDeleteError('Não foi possível excluir o inquérito. Tente novamente.');
+    } finally {
+      setDeletingCase(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
@@ -285,6 +308,16 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
           <Link to="/cases/$caseId/edit" params={{ caseId: c.id }} className="btn-primary">
             <Edit className="h-4 w-4" /> Editar
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setDeleteModalOpen(true);
+            }}
+            className="btn-secondary border-destructive/40 text-destructive hover:bg-destructive/10"
+          >
+            Excluir
+          </button>
         </div>
       </div>
 
@@ -522,6 +555,48 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
               </button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir inquérito</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir este inquérito?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-md border border-destructive/20 bg-destructive/[0.04] p-3 text-sm">
+            <p><strong>PPE:</strong> {c.ppe || '-'}</p>
+            {c.physicalNumber && <p><strong>Nº Físico:</strong> {c.physicalNumber}</p>}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Esta ação é permanente e será registrada na auditoria.
+            </p>
+          </div>
+
+          {deleteError && (
+            <p className="text-xs font-medium text-destructive">{deleteError}</p>
+          )}
+
+          <DialogFooter>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deletingCase}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary bg-destructive hover:bg-destructive/90"
+              onClick={confirmDelete}
+              disabled={deletingCase}
+            >
+              {deletingCase ? 'Excluindo...' : 'Confirmar exclusão'}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>

@@ -369,6 +369,37 @@ export async function updateCase(id: string, payload: any, options?: UpdateCaseO
   return data;
 }
 
+export async function deleteCase(id: string) {
+  const actor = await getCurrentActor();
+  const { data: previous, error: previousError } = await supabase
+    .from('cases')
+    .select('id, ppe, physical_number')
+    .eq('id', id)
+    .single();
+
+  if (previousError) throw previousError;
+
+  await insertAuditLogs([
+    {
+      case_id: null,
+      user_id: actor.userId,
+      user_email: actor.userEmail,
+      user_name: actor.userName,
+      action: 'Exclusão',
+      field: 'Inquérito',
+      old_value: previous?.ppe || previous?.physical_number || id,
+      new_value: `Inquérito excluído (${previous?.ppe || id}${previous?.physical_number ? ` / ${previous.physical_number}` : ''})`,
+    },
+  ]);
+
+  const { error } = await supabase
+    .from('cases')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
 export async function getAuditLogs(caseId: string) {
   const { data, error } = await supabase
     .from('audit_logs')
