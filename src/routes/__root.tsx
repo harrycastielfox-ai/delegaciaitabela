@@ -63,7 +63,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -78,6 +78,30 @@ function AuthGate() {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  if (!profile || profile.status !== 'active') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-lg">
+          <h1 className="text-xl font-bold text-foreground">Acesso pendente</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Seu acesso ainda não foi liberado pelo administrador.
+          </p>
+          {profile?.status === 'blocked' && (
+            <p className="mt-2 text-xs font-semibold text-destructive">
+              Seu usuário está bloqueado. Procure o administrador do sistema.
+            </p>
+          )}
+          <button
+            onClick={() => signOut()}
+            className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <Outlet />;

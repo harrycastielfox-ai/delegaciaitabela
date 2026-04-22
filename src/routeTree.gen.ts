@@ -14,6 +14,7 @@ import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as CasesCaseIdIndexRouteImport } from './routes/cases.$caseId.index'
 import { Route as CasesCaseIdEditRouteImport } from './routes/cases.$caseId.edit'
 
@@ -42,6 +43,11 @@ const CasesIndexRoute = CasesIndexRouteImport.update({
   path: '/cases/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CasesCaseIdIndexRoute = CasesCaseIdIndexRouteImport.update({
   id: '/cases/$caseId/',
   path: '/cases/$caseId/',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof AlertsRoute
   '/audit': typeof AuditRoute
   '/register': typeof RegisterRoute
+  '/admin/users': typeof AdminUsersRoute
   '/cases/': typeof CasesIndexRoute
   '/cases/$caseId/edit': typeof CasesCaseIdEditRoute
   '/cases/$caseId/': typeof CasesCaseIdIndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/alerts': typeof AlertsRoute
   '/audit': typeof AuditRoute
   '/register': typeof RegisterRoute
+  '/admin/users': typeof AdminUsersRoute
   '/cases': typeof CasesIndexRoute
   '/cases/$caseId/edit': typeof CasesCaseIdEditRoute
   '/cases/$caseId': typeof CasesCaseIdIndexRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/alerts': typeof AlertsRoute
   '/audit': typeof AuditRoute
   '/register': typeof RegisterRoute
+  '/admin/users': typeof AdminUsersRoute
   '/cases/': typeof CasesIndexRoute
   '/cases/$caseId/edit': typeof CasesCaseIdEditRoute
   '/cases/$caseId/': typeof CasesCaseIdIndexRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/audit'
     | '/register'
+    | '/admin/users'
     | '/cases/'
     | '/cases/$caseId/edit'
     | '/cases/$caseId/'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/audit'
     | '/register'
+    | '/admin/users'
     | '/cases'
     | '/cases/$caseId/edit'
     | '/cases/$caseId'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/audit'
     | '/register'
+    | '/admin/users'
     | '/cases/'
     | '/cases/$caseId/edit'
     | '/cases/$caseId/'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AlertsRoute: typeof AlertsRoute
   AuditRoute: typeof AuditRoute
   RegisterRoute: typeof RegisterRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   CasesIndexRoute: typeof CasesIndexRoute
   CasesCaseIdEditRoute: typeof CasesCaseIdEditRoute
   CasesCaseIdIndexRoute: typeof CasesCaseIdIndexRoute
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CasesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cases/$caseId/': {
       id: '/cases/$caseId/'
       path: '/cases/$caseId'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlertsRoute: AlertsRoute,
   AuditRoute: AuditRoute,
   RegisterRoute: RegisterRoute,
+  AdminUsersRoute: AdminUsersRoute,
   CasesIndexRoute: CasesIndexRoute,
   CasesCaseIdEditRoute: CasesCaseIdEditRoute,
   CasesCaseIdIndexRoute: CasesCaseIdIndexRoute,
