@@ -379,25 +379,25 @@ export async function deleteCase(id: string) {
 
   if (previousError) throw previousError;
 
-  await insertAuditLogs([
-    {
-      case_id: null,
-      user_id: actor.userId,
-      user_email: actor.userEmail,
-      user_name: actor.userName,
-      action: 'Exclusão',
-      field: 'Inquérito',
-      old_value: previous?.ppe || previous?.physical_number || id,
-      new_value: `Inquérito excluído (${previous?.ppe || id}${previous?.physical_number ? ` / ${previous.physical_number}` : ''})`,
-    },
-  ]);
-
   const { error } = await supabase
     .from('cases')
     .delete()
     .eq('id', id);
 
   if (error) throw error;
+
+  await insertAuditLogs([
+    {
+      case_id: id,
+      user_id: actor.userId,
+      user_email: actor.userEmail,
+      user_name: actor.userName,
+      action: 'Exclusão',
+      field: null,
+      old_value: previous?.ppe || null,
+      new_value: `Inquérito excluído (${previous?.ppe || id}${previous?.physical_number ? ` / ${previous.physical_number}` : ''})`,
+    },
+  ]);
 }
 
 export async function getAuditLogs(caseId: string) {
