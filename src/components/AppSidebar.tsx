@@ -1,8 +1,8 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
-import { LayoutDashboard, FileText, PlusCircle, Bell, History, Shield, ChevronRight, User, LogOut } from 'lucide-react';
-import { getCases, subscribe } from '@/lib/case-store';
-import { generateAlerts } from '@/lib/dummy-data';
+import { LayoutDashboard, FileText, PlusCircle, Bell, History, Shield, ChevronRight, User, LogOut, Users } from 'lucide-react';
+import { generateAlertsFromCases, listCases } from '@/lib/cases-repository';
+import type { InvestigationCase } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/register' as const, label: 'Novo Caso', icon: PlusCircle, description: 'Registrar inquérito' },
   { to: '/alerts' as const, label: 'Alertas', icon: Bell, description: 'Notificações ativas', showBadge: true },
   { to: '/audit' as const, label: 'Auditoria', icon: History, description: 'Log de alterações' },
+  { to: '/admin/users' as const, label: 'Usuários', icon: Users, description: 'Gestão de acesso', adminOnly: true },
 ];
 
 function SidebarUserArea() {
@@ -39,8 +40,19 @@ function SidebarUserArea() {
 
 export function AppSidebar() {
   const location = useLocation();
-  const cases = useSyncExternalStore(subscribe, getCases, getCases);
-  const alertCount = useMemo(() => generateAlerts(cases).length, [cases]);
+  const { profile } = useAuth();
+  const [cases, setCases] = useState<InvestigationCase[]>([]);
+
+  useEffect(() => {
+    listCases()
+      .then(setCases)
+      .catch((err) => {
+        console.error('Erro ao carregar alertas da sidebar:', err);
+        setCases([]);
+      });
+  }, []);
+
+  const alertCount = useMemo(() => generateAlertsFromCases(cases).length, [cases]);
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r border-sidebar-border bg-sidebar">
@@ -58,7 +70,10 @@ export function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 px-3 py-4">
         <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Módulos</p>
-        {navItems.map(({ to, label, icon: Icon, description, showBadge }) => {
+        {navItems.map(({ to, label, icon: Icon, description, showBadge, adminOnly }) => {
+          if (adminOnly && profile?.role !== 'admin' && profile?.role !== 'delegado') {
+            return null;
+          }
           const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
           return (
             <Link
