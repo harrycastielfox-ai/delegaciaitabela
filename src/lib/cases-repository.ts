@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { InvestigationCase, Situation } from './types';
+import type { Alert, InvestigationCase, Situation } from './types';
 
 const FINALIZED_SITUATIONS: Situation[] = ['Relatado', 'Arquivado', 'Remetido'];
 
@@ -160,6 +160,96 @@ export function isCaseNoRecentUpdate(
   const diffMs = now.getTime() - lastUpdate.getTime();
   const daysSinceUpdate = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return daysSinceUpdate > thresholdDays;
+}
+
+function daysUntil(targetDate: string, now: Date): number | null {
+  if (!targetDate) return null;
+  const target = new Date(targetDate);
+  if (Number.isNaN(target.getTime())) return null;
+  const diffMs = target.getTime() - now.getTime();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+}
+
+export function buildCaseAlerts(cases: InvestigationCase[], now: Date = new Date()): Alert[] {
+  const alerts: Alert[] = [];
+
+  cases.forEach((caseData) => {
+    if (isFinalizedSituation(caseData.situation)) return;
+
+    const deadlineDiffDays = daysUntil(caseData.deadline, now);
+    if (deadlineDiffDays !== null) {
+      if (deadlineDiffDays < 0) {
+        alerts.push({
+          id: `alert-overdue-${caseData.id}`,
+          caseId: caseData.id,
+          casePpe: caseData.ppe,
+          type: 'overdue',
+          message: `Prazo vencido há ${Math.abs(deadlineDiffDays)} dias`,
+          severity: 'high',
+          createdAt: now.toISOString(),
+        });
+      } else if (deadlineDiffDays <= 2) {
+        alerts.push({
+          id: `alert-near2-${caseData.id}`,
+          caseId: caseData.id,
+          casePpe: caseData.ppe,
+          type: 'near_deadline',
+          message: `Prazo vence em ${deadlineDiffDays} dia(s) — URGENTE`,
+          severity: 'high',
+          createdAt: now.toISOString(),
+        });
+      } else if (deadlineDiffDays <= 5) {
+        alerts.push({
+          id: `alert-near5-${caseData.id}`,
+          caseId: caseData.id,
+          casePpe: caseData.ppe,
+          type: 'near_deadline',
+          message: `Prazo vence em ${deadlineDiffDays} dias`,
+          severity: 'medium',
+          createdAt: now.toISOString(),
+        });
+      }
+    } else {
+      alerts.push({
+        id: `alert-nodl-${caseData.id}`,
+        caseId: caseData.id,
+        casePpe: caseData.ppe,
+        type: 'no_deadline',
+        message: 'Sem prazo definido',
+        severity: 'low',
+        createdAt: now.toISOString(),
+      });
+    }
+
+    if (isCaseNoRecentUpdate(caseData, now, 30)) {
+      const reference = caseData.updatedAt || caseData.createdAt;
+      const daysSinceUpdate = Math.ceil((now.getTime() - new Date(reference).getTime()) / (1000 * 60 * 60 * 24));
+      alerts.push({
+        id: `alert-noupd-critical-${caseData.id}`,
+        caseId: caseData.id,
+        casePpe: caseData.ppe,
+        type: 'no_update',
+        message: `Sem atualização há ${daysSinceUpdate} dias — CRÍTICO`,
+        severity: 'high',
+        createdAt: now.toISOString(),
+      });
+    } else if (isCaseNoRecentUpdate(caseData, now, 15)) {
+      const reference = caseData.updatedAt || caseData.createdAt;
+      const daysSinceUpdate = Math.ceil((now.getTime() - new Date(reference).getTime()) / (1000 * 60 * 60 * 24));
+      alerts.push({
+        id: `alert-noupd-${caseData.id}`,
+        caseId: caseData.id,
+        casePpe: caseData.ppe,
+        type: 'no_update',
+        message: `Sem atualização há ${daysSinceUpdate} dias`,
+        severity: 'medium',
+        createdAt: now.toISOString(),
+      });
+    }
+  });
+
+  const severityRank = { high: 0, medium: 1, low: 2 };
+  return alerts.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
 }
 
 export async function listCases(): Promise<InvestigationCase[]> {

@@ -1,8 +1,7 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import { LayoutDashboard, FileText, PlusCircle, Bell, History, Shield, ChevronRight, User, LogOut } from 'lucide-react';
-import { getCases, subscribe } from '@/lib/case-store';
-import { generateAlerts } from '@/lib/dummy-data';
+import { buildCaseAlerts, listCases } from '@/lib/cases-repository';
 import { useAuth } from '@/hooks/use-auth';
 
 const navItems = [
@@ -39,8 +38,20 @@ function SidebarUserArea() {
 
 export function AppSidebar() {
   const location = useLocation();
-  const cases = useSyncExternalStore(subscribe, getCases, getCases);
-  const alertCount = useMemo(() => generateAlerts(cases).length, [cases]);
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    const loadAlertCount = async () => {
+      try {
+        const cases = await listCases();
+        setAlertCount(buildCaseAlerts(cases).length);
+      } catch (err) {
+        console.error('Erro ao carregar contador de alertas na sidebar:', err);
+      }
+    };
+
+    loadAlertCount();
+  }, [location.pathname]);
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r border-sidebar-border bg-sidebar">
