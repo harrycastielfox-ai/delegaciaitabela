@@ -1,9 +1,8 @@
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Clock, AlertCircle, Info, Bell, Shield, ArrowUpRight, Filter } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
-import { getCases, subscribe } from '@/lib/case-store';
-import { generateAlerts } from '@/lib/dummy-data';
+import { buildCaseAlerts, listCases } from '@/lib/cases-repository';
 import type { Alert } from '@/lib/types';
 
 const iconMap = {
@@ -31,9 +30,28 @@ const severityLabel: Record<string, string> = {
 const severityOrder = ['high', 'medium', 'low'] as const;
 
 export function AlertsView() {
-  const cases = useSyncExternalStore(subscribe, getCases, getCases);
-  const alerts = useMemo(() => generateAlerts(cases), [cases]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterSeverity, setFilterSeverity] = useState<string>('');
+
+  const loadAlerts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cases = await listCases();
+      setAlerts(buildCaseAlerts(cases));
+    } catch (err) {
+      console.error('Erro ao carregar alertas:', err);
+      setError('Não foi possível carregar os alertas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAlerts();
+  }, []);
 
   const filteredAlerts = useMemo(() => {
     if (!filterSeverity) return alerts;
@@ -66,6 +84,19 @@ export function AlertsView() {
           <p className="text-sm text-muted-foreground">{alerts.length} alerta(s) ativo(s) no sistema</p>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <p>{error}</p>
+          <button onClick={loadAlerts} className="mt-2 text-xs font-semibold underline">Tentar novamente</button>
+        </div>
+      )}
+
+      {loading && !error && (
+        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+          Carregando alertas...
+        </div>
+      )}
 
       {/* Severity summary cards */}
       <div className="grid grid-cols-3 gap-4">
