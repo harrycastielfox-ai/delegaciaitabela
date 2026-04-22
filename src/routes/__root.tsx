@@ -69,7 +69,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGate() {
-  const { user, profile, loading, profileLoading, signOut } = useAuth();
+const { user, profile, loading, profileLoading, signOut } = useAuth();
 
   if (loading || (user && profileLoading)) {
     return (
