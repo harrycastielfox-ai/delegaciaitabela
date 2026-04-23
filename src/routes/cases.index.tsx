@@ -6,6 +6,10 @@ import { CaseListView } from '@/components/CaseListView';
 const searchSchema = z.object({
   situation: z.string().optional(),
   priority: z.string().optional(),
+  severity: z.string().optional(),
+  type: z.string().optional(),
+  createdYear: z.string().optional(),
+  reportYear: z.string().optional(),
   overdue: z.enum(['true', 'false']).optional(),
   noDeadline: z.enum(['true', 'false']).optional(),
   noUpdate: z.enum(['true', 'false']).optional(),

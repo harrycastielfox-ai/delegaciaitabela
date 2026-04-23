@@ -83,9 +83,11 @@ export function CaseListView() {
   useEffect(() => {
     const incomingSituation = (searchParams.situation as Situation | undefined) ?? '';
     const incomingPriority = (searchParams.priority as Priority | undefined) ?? '';
+    const incomingSeverity = (searchParams.severity as Severity | undefined) ?? '';
 
     setFilterSituation(incomingSituation);
     setFilterPriority(incomingPriority);
+    setFilterSeverity(incomingSeverity);
     setFilterOverdueOnly(isTruthy(searchParams.overdue));
     setFilterNoDeadline(isTruthy(searchParams.noDeadline));
     setFilterNoUpdate(isTruthy(searchParams.noUpdate));
@@ -136,12 +138,23 @@ export function CaseListView() {
       const matchesNoDeadline = !filterNoDeadline || isCaseNoDeadline(c);
       const matchesNoUpdate = !filterNoUpdate || isCaseNoRecentUpdate(c);
       const matchesFinalized = !filterFinalized || isFinalizedSituation(c.situation);
+      const typeFilter = (searchParams.type as string | undefined)?.split(',').map((value) => value.trim()).filter(Boolean) ?? [];
+      const matchesType = typeFilter.length === 0 || typeFilter.includes(c.type);
+      const createdYear = searchParams.createdYear ? Number(searchParams.createdYear) : null;
+      const reportYear = searchParams.reportYear ? Number(searchParams.reportYear) : null;
+      const createdDate = c.createdAt ? new Date(c.createdAt) : null;
+      const reportDate = c.reportDate ? new Date(c.reportDate) : null;
+      const matchesCreatedYear = createdYear === null || (createdDate !== null && !Number.isNaN(createdDate.getTime()) && createdDate.getFullYear() === createdYear);
+      const matchesReportYear = reportYear === null || (reportDate !== null && !Number.isNaN(reportDate.getTime()) && reportDate.getFullYear() === reportYear);
 
       return (
         matchesSearch &&
         matchesPriority &&
         matchesSeverity &&
         matchesSituation &&
+        matchesType &&
+        matchesCreatedYear &&
+        matchesReportYear &&
         matchesTeam &&
         matchesOverdue &&
         matchesNoDeadline &&
@@ -160,6 +173,9 @@ export function CaseListView() {
     filterNoDeadline,
     filterNoUpdate,
     filterFinalized,
+    searchParams.type,
+    searchParams.createdYear,
+    searchParams.reportYear,
   ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
