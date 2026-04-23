@@ -153,12 +153,10 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
         data_limite: form.dataLimit || null,
         data_do_fato: form.dateOfFact || null,
         created_at: form.createdAt,
-        deadline: form.dataLimit || null,
         crime_classification: form.crimeClassification,
         severity: form.severity,
         type: form.type,
         victim: form.victim,
-        suspect: form.authorInvestigated || null,
         autor_investigado: form.authorInvestigated || null,
         autor_det_indet: form.authorDetIndet || null,
         reu_preso: form.defendantArrested,
@@ -201,7 +199,14 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
         }
       }
     } catch (err) {
-      console.error('Erro ao salvar:', err);
+      const supabaseError = err as { message?: string; code?: string; details?: string; hint?: string } | null;
+      console.error('Erro ao salvar no Supabase (create/update case):', {
+        message: supabaseError?.message,
+        code: supabaseError?.code,
+        details: supabaseError?.details,
+        hint: supabaseError?.hint,
+        raw: err,
+      });
       alert('Erro ao salvar no banco.');
     } finally {
       setSaving(false);

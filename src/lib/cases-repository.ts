@@ -314,7 +314,16 @@ export async function createCase(payload: any) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase insert error on public.cases', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: payloadWithActor,
+    });
+    throw error;
+  }
 
   await insertAuditLogs([
     {
