@@ -118,19 +118,14 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
     : 0;
 
   useEffect(() => {
-    if (!form.createdAt || !form.prazo) {
+    const prazoDias = Number.parseInt(String(form.prazo ?? '').trim(), 10);
+    if (!form.createdAt || Number.isNaN(prazoDias) || prazoDias <= 0) {
       if (form.dataLimit !== '') update('dataLimit', '');
       return;
     }
 
     const instauracao = new Date(`${form.createdAt}T00:00:00`);
     if (Number.isNaN(instauracao.getTime())) return;
-
-    const prazoDias = Number.parseInt(String(form.prazo), 10);
-    if (Number.isNaN(prazoDias)) {
-      if (form.dataLimit !== '') update('dataLimit', '');
-      return;
-    }
 
     instauracao.setDate(instauracao.getDate() + prazoDias);
     const calculated = instauracao.toISOString().split('T')[0];
@@ -351,14 +346,6 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
             />
           </FormField>
 
-          <FormField label="Data do Fato">
-            <input
-              type="date"
-              className="form-input"
-              value={form.dateOfFact}
-              onChange={(e) => update('dateOfFact', e.target.value)}
-            />
-          </FormField>
         </div>
       </SectionCard>
 
