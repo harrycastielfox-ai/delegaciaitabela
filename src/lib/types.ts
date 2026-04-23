@@ -9,6 +9,7 @@ export interface InvestigationCase {
   ppe: string;
   physicalNumber: string;
   priority: Priority;
+  dateOfFact?: string;
   createdAt: string;
   deadline: string;
   daysElapsed: number;
@@ -16,7 +17,12 @@ export interface InvestigationCase {
   severity: Severity;
   type: CaseType;
   victim: string;
+  authorInvestigated?: string;
   suspect: string;
+  authorDetIndet?: 'Determinado' | 'Indeterminado';
+  defendantArrested?: boolean;
+  linkedFaction?: boolean;
+  factionName?: string;
   team: string;
   officer: string;
   location: string;
