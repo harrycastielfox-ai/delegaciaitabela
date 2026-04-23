@@ -159,6 +159,50 @@ export function DashboardView() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [cases]);
 
+  const cvliElucidationData = useMemo(() => {
+    const now = new Date();
+    const monthKeys = Array.from({ length: 12 }, (_, index) => {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
+      return `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+    });
+
+    const byMonth = monthKeys.reduce<Record<string, { month: string; registros: number; elucidados: number; percentual: number }>>((acc, key) => {
+      acc[key] = { month: key, registros: 0, elucidados: 0, percentual: 0 };
+      return acc;
+    }, {});
+
+    cases.forEach((c) => {
+      if (c.severity !== 'CVLI') return;
+
+      if ((c.type === 'IP' || c.type === 'APF') && c.createdAt) {
+        const createdAt = new Date(c.createdAt);
+        if (!Number.isNaN(createdAt.getTime())) {
+          const createdKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+          if (byMonth[createdKey]) byMonth[createdKey].registros += 1;
+        }
+      }
+
+      if (c.situation === 'Relatado' && c.reportDate) {
+        const reportDate = new Date(c.reportDate);
+        if (!Number.isNaN(reportDate.getTime())) {
+          const reportKey = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
+          if (byMonth[reportKey]) byMonth[reportKey].elucidados += 1;
+        }
+      }
+    });
+
+    return monthKeys.map((key) => {
+      const registros = byMonth[key].registros;
+      const elucidados = byMonth[key].elucidados;
+      const percentual = registros === 0 ? 0 : Number(((elucidados / registros) * 100).toFixed(1));
+
+      return {
+        ...byMonth[key],
+        percentual,
+      };
+    });
+  }, [cases]);
+
   const criticalCases = useMemo(() => {
     return cases
       .filter((c) => {
@@ -357,6 +401,28 @@ export function DashboardView() {
           )}
         </motion.div>
       </div>
+
+      {/* CVLI - Comparativo de Elucidação */}
+      <motion.div {...anim(0.35)} className="section-card">
+        <h3 className="section-card-header">CVLI – Comparativo de Elucidação</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={cvliElucidationData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 240)" />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'oklch(0.55 0.01 240)' }} />
+            <YAxis tick={{ fontSize: 10, fill: 'oklch(0.55 0.01 240)' }} />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              formatter={(value: number, name: string, payload) => {
+                if (name === 'Percentual' && payload && payload.payload) return [`${payload.payload.percentual}%`, 'Percentual'];
+                return [value, name];
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: '10px', color: 'oklch(0.55 0.01 240)' }} />
+            <Bar dataKey="registros" name="Registros" fill="oklch(0.65 0.15 200)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="elucidados" name="Elucidados" fill="oklch(0.72 0.19 155)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </motion.div>
     </div>
   );
 }
