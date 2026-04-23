@@ -14,13 +14,18 @@ const emptyForm = {
   ppe: '',
   physicalNumber: '',
   priority: 'Média' as Priority,
+  dateOfFact: '',
   createdAt: new Date().toISOString().split('T')[0],
   deadline: '',
   crimeClassification: '',
   severity: 'Outros' as Severity,
   type: 'IP' as CaseType,
   victim: '',
-  suspect: '',
+  authorInvestigated: '',
+  authorDetIndet: 'Indeterminado' as 'Determinado' | 'Indeterminado',
+  defendantArrested: false,
+  linkedFaction: false,
+  factionName: '',
   team: '',
   officer: '',
   location: '',
@@ -85,7 +90,16 @@ function SectionCard({
 
 export function CaseForm({ initialData, mode }: CaseFormProps) {
   const navigate = useNavigate();
-  const [form, setForm] = useState(initialData || emptyForm);
+  const [form, setForm] = useState(() => ({
+    ...emptyForm,
+    ...initialData,
+    authorInvestigated: initialData?.authorInvestigated ?? initialData?.suspect ?? '',
+    authorDetIndet: initialData?.authorDetIndet ?? 'Indeterminado',
+    defendantArrested: initialData?.defendantArrested ?? false,
+    linkedFaction: initialData?.linkedFaction ?? false,
+    factionName: initialData?.factionName ?? '',
+    dateOfFact: initialData?.dateOfFact ?? '',
+  }));
   const [saveState, setSaveState] = useState<'idle' | 'saved'>('idle');
   const [saving, setSaving] = useState(false);
 
@@ -93,6 +107,12 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
 
   const handleSubmit = async (e: React.FormEvent, continueEditing = false) => {
     e.preventDefault();
+
+    if (form.linkedFaction && !form.factionName?.trim()) {
+      alert('Informe o nome da facção quando o campo "Vinculado a Facção?" estiver como Sim.');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -100,13 +120,19 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
         ppe: form.ppe,
         physical_number: form.physicalNumber || null,
         priority: form.priority,
+        data_do_fato: form.dateOfFact || null,
         created_at: form.createdAt,
         deadline: form.deadline || null,
         crime_classification: form.crimeClassification,
         severity: form.severity,
         type: form.type,
         victim: form.victim,
-        suspect: form.suspect || null,
+        suspect: form.authorInvestigated || null,
+        autor_investigado: form.authorInvestigated || null,
+        autor_det_indet: form.authorDetIndet || null,
+        reu_preso: form.defendantArrested,
+        vinculado_faccao: form.linkedFaction,
+        nome_faccao: form.linkedFaction ? (form.factionName || null) : null,
         team: form.team || null,
         officer: form.officer || null,
         location: form.location || null,
@@ -228,7 +254,7 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
             />
           </FormField>
 
-          <FormField label="Data de Criação" required>
+          <FormField label="Data de Instauração" required>
             <input
               type="date"
               className="form-input"
@@ -244,6 +270,15 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
               className="form-input"
               value={form.deadline}
               onChange={(e) => update('deadline', e.target.value)}
+            />
+          </FormField>
+
+          <FormField label="Data do Fato">
+            <input
+              type="date"
+              className="form-input"
+              value={form.dateOfFact}
+              onChange={(e) => update('dateOfFact', e.target.value)}
             />
           </FormField>
         </div>
@@ -303,7 +338,7 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
       </SectionCard>
 
       <SectionCard title="Pessoas Envolvidas">
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <FormField label="Vítima" required>
             <input
               className="form-input"
@@ -314,13 +349,35 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
             />
           </FormField>
 
-          <FormField label="Suspeito">
+          <FormField label="Autor/Investigado">
             <input
               className="form-input"
-              value={form.suspect}
-              onChange={(e) => update('suspect', e.target.value)}
+              value={form.authorInvestigated}
+              onChange={(e) => update('authorInvestigated', e.target.value)}
               placeholder="Nome ou 'Desconhecido'"
             />
+          </FormField>
+
+          <FormField label="Réu Preso?">
+            <select
+              className="form-input"
+              value={form.defendantArrested ? 'Sim' : 'Não'}
+              onChange={(e) => update('defendantArrested', e.target.value === 'Sim')}
+            >
+              <option>Não</option>
+              <option>Sim</option>
+            </select>
+          </FormField>
+
+          <FormField label="Autor Det/Indet">
+            <select
+              className="form-input"
+              value={form.authorDetIndet}
+              onChange={(e) => update('authorDetIndet', e.target.value)}
+            >
+              <option>Determinado</option>
+              <option>Indeterminado</option>
+            </select>
           </FormField>
         </div>
       </SectionCard>
@@ -369,6 +426,29 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
               onChange={(e) => update('motivation', e.target.value)}
             />
           </FormField>
+
+          <FormField label="Vinculado a Facção?">
+            <select
+              className="form-input"
+              value={form.linkedFaction ? 'Sim' : 'Não'}
+              onChange={(e) => update('linkedFaction', e.target.value === 'Sim')}
+            >
+              <option>Não</option>
+              <option>Sim</option>
+            </select>
+          </FormField>
+
+          {form.linkedFaction && (
+            <FormField label="Nome da Facção" required help="Obrigatório quando vinculado a facção">
+              <input
+                className="form-input"
+                value={form.factionName}
+                onChange={(e) => update('factionName', e.target.value)}
+                placeholder="Informe o nome da facção"
+                required
+              />
+            </FormField>
+          )}
 
           <FormField label="Situação" required help="Status processual do inquérito">
             <select
