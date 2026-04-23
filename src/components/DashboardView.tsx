@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   FileText, AlertTriangle, CheckCircle, Clock, TrendingUp,
   ShieldAlert, CalendarOff, RefreshCw, Activity, ArrowUpRight,
@@ -97,6 +97,7 @@ const tooltipStyle = {
 };
 
 export function DashboardView() {
+  const navigate = useNavigate();
   const [cases, setCases] = useState<InvestigationCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,48 +161,80 @@ export function DashboardView() {
   }, [cases]);
 
   const cvliElucidationData = useMemo(() => {
-    const now = new Date();
-    const monthKeys = Array.from({ length: 12 }, (_, index) => {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
-      return `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-    });
-
-    const byMonth = monthKeys.reduce<Record<string, { month: string; registros: number; elucidados: number; percentual: number }>>((acc, key) => {
-      acc[key] = { month: key, registros: 0, elucidados: 0, percentual: 0 };
-      return acc;
-    }, {});
+    const yearSet = new Set<number>();
 
     cases.forEach((c) => {
-      if (c.severity !== 'CVLI') return;
+      if (c.createdAt) {
+        const createdDate = new Date(c.createdAt);
+        if (!Number.isNaN(createdDate.getTime())) yearSet.add(createdDate.getFullYear());
+      }
+      if (c.reportDate) {
+        const reportDate = new Date(c.reportDate);
+        if (!Number.isNaN(reportDate.getTime())) yearSet.add(reportDate.getFullYear());
+      }
+    });
 
+    const years = [...yearSet].sort((a, b) => a - b);
+
+    const byYear = years.reduce<Record<number, { year: number; registros: number; elucidados: number; percentual: number }>>((acc, year) => {
+      acc[year] = { year, registros: 0, elucidados: 0, percentual: 0 };
+      return acc;
+    }, {} as Record<number, { year: number; registros: number; elucidados: number; percentual: number }>);
+
+    cases.forEach((c) => {
       if ((c.type === 'IP' || c.type === 'APF') && c.createdAt) {
         const createdAt = new Date(c.createdAt);
         if (!Number.isNaN(createdAt.getTime())) {
-          const createdKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-          if (byMonth[createdKey]) byMonth[createdKey].registros += 1;
+          const createdYear = createdAt.getFullYear();
+          if (c.severity === 'CVLI' && byYear[createdYear]) byYear[createdYear].registros += 1;
         }
       }
 
       if (c.situation === 'Relatado' && c.reportDate) {
         const reportDate = new Date(c.reportDate);
         if (!Number.isNaN(reportDate.getTime())) {
-          const reportKey = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
-          if (byMonth[reportKey]) byMonth[reportKey].elucidados += 1;
+          const reportYear = reportDate.getFullYear();
+          if (byYear[reportYear]) byYear[reportYear].elucidados += 1;
         }
       }
     });
 
-    return monthKeys.map((key) => {
-      const registros = byMonth[key].registros;
-      const elucidados = byMonth[key].elucidados;
+    return years.map((year) => {
+      const registros = byYear[year].registros;
+      const elucidados = byYear[year].elucidados;
       const percentual = registros === 0 ? 0 : Number(((elucidados / registros) * 100).toFixed(1));
 
       return {
-        ...byMonth[key],
+        ...byYear[year],
         percentual,
       };
     });
   }, [cases]);
+
+  const navigateToCvliYearCases = (entry: { year?: number; payload?: { year?: number } }, dataKey: 'registros' | 'elucidados') => {
+    const year = entry?.year ?? entry?.payload?.year;
+    if (!year) return;
+
+    if (dataKey === 'registros') {
+      navigate({
+        to: '/cases',
+        search: {
+          severity: 'CVLI',
+          type: 'IP,APF',
+          createdYear: String(year),
+        },
+      });
+      return;
+    }
+
+    navigate({
+      to: '/cases',
+        search: {
+          situation: 'Relatado',
+          reportYear: String(year),
+        },
+      });
+  };
 
   const criticalCases = useMemo(() => {
     return cases
@@ -408,7 +441,7 @@ export function DashboardView() {
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={cvliElucidationData}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 240)" />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'oklch(0.55 0.01 240)' }} />
+            <XAxis dataKey="year" tick={{ fontSize: 10, fill: 'oklch(0.55 0.01 240)' }} />
             <YAxis tick={{ fontSize: 10, fill: 'oklch(0.55 0.01 240)' }} />
             <Tooltip
               contentStyle={tooltipStyle}
@@ -418,10 +451,46 @@ export function DashboardView() {
               }}
             />
             <Legend wrapperStyle={{ fontSize: '10px', color: 'oklch(0.55 0.01 240)' }} />
-            <Bar dataKey="registros" name="Registros" fill="oklch(0.65 0.15 200)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="elucidados" name="Elucidados" fill="oklch(0.72 0.19 155)" radius={[4, 4, 0, 0]} />
+            <Bar
+              dataKey="registros"
+              name="Registros"
+              fill="oklch(0.65 0.15 200)"
+              radius={[4, 4, 0, 0]}
+              cursor="pointer"
+              onClick={(entry) => navigateToCvliYearCases(entry, 'registros')}
+            />
+            <Bar
+              dataKey="elucidados"
+              name="Elucidados"
+              fill="oklch(0.72 0.19 155)"
+              radius={[4, 4, 0, 0]}
+              cursor="pointer"
+              onClick={(entry) => navigateToCvliYearCases(entry, 'elucidados')}
+            />
           </BarChart>
         </ResponsiveContainer>
+        <div className="mt-4 overflow-x-auto rounded-md border border-border">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-border bg-muted/20">
+                <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-muted-foreground">Ano</th>
+                <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-muted-foreground">Registros</th>
+                <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-muted-foreground">Elucidados</th>
+                <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-muted-foreground">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cvliElucidationData.map((item) => (
+                <tr key={item.year} className="border-b border-border/70 last:border-b-0">
+                  <td className="px-3 py-2 text-foreground">{item.year}</td>
+                  <td className="px-3 py-2 text-foreground">{item.registros}</td>
+                  <td className="px-3 py-2 text-foreground">{item.elucidados}</td>
+                  <td className="px-3 py-2 text-foreground">{item.percentual.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </motion.div>
     </div>
   );
