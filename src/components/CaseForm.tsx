@@ -103,10 +103,11 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
     linkedFaction: initialData?.linkedFaction ?? false,
     factionName: initialData?.factionName ?? '',
     dateOfFact: initialData?.dateOfFact ?? '',
-    prazo: initialData?.prazo?.toString() ?? '',
+    prazo: initialData?.prazo ?? 0,
     dataLimit: initialData?.dataLimit ?? initialData?.deadline ?? '',
     boNumber: initialData?.boNumber ?? '',
     investigatorResponsible: initialData?.investigatorResponsible ?? '',
+    
   }));
   const [saveState, setSaveState] = useState<'idle' | 'saved'>('idle');
   const [saving, setSaving] = useState(false);
@@ -347,6 +348,15 @@ export function CaseForm({ initialData, mode }: CaseFormProps) {
               className="form-input bg-muted"
               value={daysElapsed}
               readOnly
+            />
+          </FormField>
+
+          <FormField label="Data do Fato">
+            <input
+              type="date"
+              className="form-input"
+              value={form.dateOfFact}
+              onChange={(e) => update('dateOfFact', e.target.value)}
             />
           </FormField>
         </div>

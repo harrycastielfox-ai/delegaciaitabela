@@ -31,6 +31,7 @@ function mapCaseRow(row: any): InvestigationCase {
     ppe: row.ppe ?? '',
     physicalNumber: row.physical_number ?? '',
     priority: row.priority ?? 'Média',
+    dateOfFact: toDateOnly(row.data_do_fato),
     prazo: toIntegerOrUndefined(row.prazo),
     dataLimit: toDateOnly(row.data_limite ?? row.deadline),
     dateOfFact: toDateOnly(row.data_do_fato),

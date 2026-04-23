@@ -9,24 +9,33 @@ export interface InvestigationCase {
   ppe: string;
   physicalNumber: string;
   priority: Priority;
-  prazo?: number;
+  prazo: number;
   dataLimit?: string;
   dateOfFact?: string;
   createdAt: string;
-  deadline: string;
+  deadline?: string;
   daysElapsed: number;
+  
   crimeClassification: string;
   severity: Severity;
   type: CaseType;
   victim: string;
   authorInvestigated?: string;
   suspect: string;
-  authorDetIndet?: 'Determinado' | 'Indeterminado';
-  defendantArrested?: boolean;
+  authorDetIndet: 'Determinado' | 'Indeterminado';
+  defendantArrested: boolean;
+
   linkedFaction?: boolean;
   factionName?: string;
+
   boNumber?: string;
   investigatorResponsible?: string;
+
+  team: string;
+  officer: string;
+  location: string;
+  district: string;
+  motivation: string;
   team: string;
   officer: string;
   location: string;
