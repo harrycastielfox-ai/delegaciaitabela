@@ -46,15 +46,21 @@ function toInvestigationCase(row: any): InvestigationCase {
     ppe: row.ppe ?? '',
     physicalNumber: row.physical_number ?? '',
     priority: row.priority ?? 'Média',
+    prazo: row.prazo ?? '',
+    dataLimit: toDateOnly(row.data_limite ?? row.deadline),
+    dateOfFact: toDateOnly(row.data_do_fato),
     createdAt,
-    deadline: toDateOnly(row.deadline),
+    deadline: toDateOnly(row.data_limite ?? row.deadline),
     daysElapsed,
     crimeClassification: row.crime_classification ?? '',
     severity: row.severity ?? 'Outros',
     type: row.type ?? 'IP',
     victim: row.victim ?? '',
+    authorInvestigated: row.autor_investigado ?? row.suspect ?? '',
     suspect: row.suspect ?? '',
+    boNumber: row.numero_bo ?? '',
     team: row.team ?? '',
+    investigatorResponsible: row.investigador_responsavel ?? '',
     officer: row.officer ?? '',
     location: row.location ?? '',
     district: row.district ?? '',
@@ -355,8 +361,11 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
           <div className="grid grid-cols-2 gap-5">
             <DetailField label="Nº PPE" value={c.ppe} />
             <DetailField label="Nº Físico" value={c.physicalNumber} />
-            <DetailField label="Data Criação" value={c.createdAt} />
-            <DetailField label="Prazo" value={c.deadline} />
+            <DetailField label="Nº do B.O." value={c.boNumber} />
+            <DetailField label="Data do Fato" value={c.dateOfFact} />
+            <DetailField label="Data de Instauração" value={c.createdAt} />
+            <DetailField label="Prazo" value={c.prazo} />
+            <DetailField label="Data Limite" value={c.dataLimit || c.deadline} />
             <DetailField label="Dias Decorridos" value={c.daysElapsed} />
           </div>
         </div>
@@ -377,7 +386,7 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
           <SectionHeader title="Pessoas Envolvidas" icon={Users} />
           <div className="grid grid-cols-2 gap-5">
             <DetailField label="Vítima" value={c.victim} />
-            <DetailField label="Suspeito" value={c.suspect} />
+            <DetailField label="Autor/Investigado" value={c.authorInvestigated || c.suspect} />
           </div>
         </div>
 
@@ -386,6 +395,7 @@ export function CaseDetailsView({ caseId }: { caseId: string }) {
           <SectionHeader title="Dados Operacionais" icon={MapPin} />
           <div className="grid grid-cols-2 gap-5">
             <DetailField label="Equipe" value={c.team} />
+            <DetailField label="Investigador Responsável" value={c.investigatorResponsible} />
             <DetailField label="Escrivão" value={c.officer} />
             <DetailField label="Bairro" value={c.location} />
             <DetailField label="Distrito" value={c.district} />

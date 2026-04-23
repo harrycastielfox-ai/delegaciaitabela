@@ -8,6 +8,12 @@ function toDateOnly(value?: string | null): string {
   return value.includes('T') ? value.split('T')[0] : value;
 }
 
+function toIntegerOrUndefined(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
 function computeDaysElapsed(createdAt: string): number {
   if (!createdAt) return 0;
   const created = new Date(createdAt);
@@ -26,8 +32,11 @@ function mapCaseRow(row: any): InvestigationCase {
     physicalNumber: row.physical_number ?? '',
     priority: row.priority ?? 'Média',
     dateOfFact: toDateOnly(row.data_do_fato),
+    prazo: toIntegerOrUndefined(row.prazo),
+    dataLimit: toDateOnly(row.data_limite ?? row.deadline),
+    dateOfFact: toDateOnly(row.data_do_fato),
     createdAt,
-    deadline: toDateOnly(row.deadline),
+    deadline: toDateOnly(row.data_limite ?? row.deadline),
     daysElapsed: computeDaysElapsed(createdAt),
     crimeClassification: row.crime_classification ?? '',
     severity: row.severity ?? 'Outros',
@@ -39,6 +48,8 @@ function mapCaseRow(row: any): InvestigationCase {
     defendantArrested: row.reu_preso ?? false,
     linkedFaction: row.vinculado_faccao ?? false,
     factionName: row.nome_faccao ?? '',
+    boNumber: row.numero_bo ?? '',
+    investigatorResponsible: row.investigador_responsavel ?? '',
     team: row.team ?? '',
     officer: row.officer ?? '',
     location: row.location ?? '',
@@ -73,9 +84,11 @@ const DEFAULT_FIELD_LABELS: Record<string, string> = {
   ppe: 'Nº PPE',
   physical_number: 'Nº Físico',
   priority: 'Prioridade',
+  prazo: 'Prazo (dias)',
+  data_limite: 'Data limite',
   data_do_fato: 'Data do fato',
   created_at: 'Data de instauração',
-  deadline: 'Prazo',
+  deadline: 'Data limite',
   crime_classification: 'Tipificação',
   severity: 'Gravidade',
   type: 'Tipo',
@@ -86,6 +99,8 @@ const DEFAULT_FIELD_LABELS: Record<string, string> = {
   reu_preso: 'Réu preso',
   vinculado_faccao: 'Vinculado a facção',
   nome_faccao: 'Nome da facção',
+  numero_bo: 'Nº do B.O.',
+  investigador_responsavel: 'Investigador responsável',
   team: 'Equipe',
   officer: 'Escrivão',
   location: 'Bairro',
