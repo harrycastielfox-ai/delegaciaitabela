@@ -49,6 +49,23 @@ const anim = (delay = 0) => ({
 });
 
 const CHART_COLORS = ['#12d681', '#21a5ff', '#facc15', '#f87171', '#a78bfa', '#f59e0b'];
+const STATUS_COLORS: Record<string, string> = {
+  'Em andamento': '#3ddc84',
+  Instaurado: '#2dd4bf',
+  Relatado: '#1da1f2',
+  Remetido: '#f59e0b',
+  Arquivado: '#facc15',
+  Outros: '#a78bfa',
+};
+const SEVERITY_COLORS: Record<string, string> = {
+  CVLI: '#ff4d4f',
+  CVP: '#facc15',
+  Patrimonial: '#21a5ff',
+  Drogas: '#a78bfa',
+  Outros: '#34d399',
+};
+const STATUS_ORDER = ['Em andamento', 'Instaurado', 'Relatado', 'Remetido', 'Arquivado'];
+const SEVERITY_ORDER = ['CVLI', 'CVP', 'Patrimonial', 'Drogas', 'Outros'];
 
 const tooltipStyle = {
   backgroundColor: '#0d1419',
@@ -143,6 +160,18 @@ function formatRelativeTime(date: string | undefined) {
   return `Há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
 }
 
+function getAlertBadgeClass(severity: 'high' | 'medium' | 'low') {
+  if (severity === 'high') return 'border-red-400/35 bg-red-500/10 text-red-300';
+  if (severity === 'medium') return 'border-amber-400/35 bg-amber-500/10 text-amber-300';
+  return 'border-emerald-400/35 bg-emerald-500/10 text-emerald-300';
+}
+
+function getAlertLabel(severity: 'high' | 'medium' | 'low') {
+  if (severity === 'high') return 'ALTO';
+  if (severity === 'medium') return 'MÉDIO';
+  return 'BAIXO';
+}
+
 export function DashboardView() {
   const [cases, setCases] = useState<InvestigationCase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,7 +215,11 @@ export function DashboardView() {
     cases.forEach((c) => {
       map[c.situation] = (map[c.situation] || 0) + 1;
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    const known = STATUS_ORDER.filter((name) => map[name]).map((name) => ({ name, value: map[name] }));
+    const otherTotal = Object.entries(map)
+      .filter(([name]) => !STATUS_ORDER.includes(name))
+      .reduce((acc, [, value]) => acc + value, 0);
+    return otherTotal ? [...known, { name: 'Outros', value: otherTotal }] : known;
   }, [cases]);
 
   const chartByTeam = useMemo(() => {
@@ -206,7 +239,11 @@ export function DashboardView() {
     cases.forEach((c) => {
       map[c.severity] = (map[c.severity] || 0) + 1;
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    const known = SEVERITY_ORDER.filter((name) => map[name]).map((name) => ({ name, value: map[name] }));
+    const otherTotal = Object.entries(map)
+      .filter(([name]) => !SEVERITY_ORDER.includes(name))
+      .reduce((acc, [, value]) => acc + value, 0);
+    return otherTotal ? [...known, { name: 'Outros', value: otherTotal }] : known;
   }, [cases]);
 
   const cvliElucidationData = useMemo(() => {
@@ -435,7 +472,9 @@ export function DashboardView() {
                 {topAlerts.slice(0, 4).map((a) => (
                   <Link key={a.id} to="/cases/$caseId" params={{ caseId: a.caseId }} className="flex items-center justify-between gap-2 rounded-lg border border-amber-300/15 bg-[#11161b] px-2.5 py-2 transition hover:border-amber-300/35">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="rounded-md border border-amber-400/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">{a.severity}</span>
+                      <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getAlertBadgeClass(a.severity)}`}>
+                        {getAlertLabel(a.severity)}
+                      </span>
                       <p className="truncate text-sm text-white/90">{a.message} · <span className="font-mono text-[11px] text-white/50">{a.casePpe}</span></p>
                     </div>
                     <span className="shrink-0 text-[11px] text-amber-200/80">{a.time}</span>
@@ -485,7 +524,7 @@ export function DashboardView() {
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie data={chartByStatus} dataKey="value" nameKey="name" cx="42%" cy="50%" innerRadius={62} outerRadius={92} stroke="#0a1217" strokeWidth={2}>
-                  {chartByStatus.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  {chartByStatus.map((entry, i) => <Cell key={i} fill={STATUS_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
                 <Legend wrapperStyle={{ fontSize: '11px', color: '#dbe2ea' }} />
                 <Tooltip contentStyle={tooltipStyle} />
@@ -519,7 +558,7 @@ export function DashboardView() {
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie data={chartBySeverity} dataKey="value" nameKey="name" cx="42%" cy="50%" innerRadius={62} outerRadius={92} stroke="#0a1217" strokeWidth={2}>
-                  {chartBySeverity.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  {chartBySeverity.map((entry, i) => <Cell key={i} fill={SEVERITY_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
                 <Legend wrapperStyle={{ fontSize: '11px', color: '#dbe2ea' }} />
                 <Tooltip contentStyle={tooltipStyle} />
