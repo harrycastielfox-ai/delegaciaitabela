@@ -156,7 +156,7 @@ export function AlertsView() {
                         {severityLabel[a.severity]}
                       </span>
                       <Link
-                        to={a.type === 'missing_data' ? '/cases/edit/$caseId' : '/cases/$caseId'}
+                        to="/cases/$caseId"
                         params={{ caseId: a.caseId }}
                         className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-background/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary/10"
                       >
