@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
@@ -144,7 +144,6 @@ function formatRelativeTime(date: string | undefined) {
 }
 
 export function DashboardView() {
-  const navigate = useNavigate();
   const [cases, setCases] = useState<InvestigationCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -211,80 +210,50 @@ export function DashboardView() {
   }, [cases]);
 
   const cvliElucidationData = useMemo(() => {
-    const yearSet = new Set<number>();
+    const today = new Date();
+    const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    cases.forEach((c) => {
-      if (c.createdAt) {
-        const createdDate = new Date(c.createdAt);
-        if (!Number.isNaN(createdDate.getTime())) yearSet.add(createdDate.getFullYear());
-      }
-      if (c.reportDate) {
-        const reportDate = new Date(c.reportDate);
-        if (!Number.isNaN(reportDate.getTime())) yearSet.add(reportDate.getFullYear());
-      }
-    });
-
-    const years = [...yearSet].sort((a, b) => a - b);
-
-    const byYear = years.reduce<Record<number, { year: number; registros: number; elucidados: number; percentual: number }>>((acc, year) => {
-      acc[year] = { year, registros: 0, elucidados: 0, percentual: 0 };
-      return acc;
-    }, {} as Record<number, { year: number; registros: number; elucidados: number; percentual: number }>);
-
-    cases.forEach((c) => {
-      if ((c.type === 'IP' || c.type === 'APF') && c.createdAt) {
-        const createdAt = new Date(c.createdAt);
-        if (!Number.isNaN(createdAt.getTime())) {
-          const createdYear = createdAt.getFullYear();
-          if (c.severity === 'CVLI' && byYear[createdYear]) byYear[createdYear].registros += 1;
-        }
-      }
-
-      if (c.situation === 'Relatado' && c.reportDate) {
-        const reportDate = new Date(c.reportDate);
-        if (!Number.isNaN(reportDate.getTime())) {
-          const reportYear = reportDate.getFullYear();
-          if (byYear[reportYear]) byYear[reportYear].elucidados += 1;
-        }
-      }
-    });
-
-    return years.map((year) => {
-      const registros = byYear[year].registros;
-      const elucidados = byYear[year].elucidados;
-      const percentual = registros === 0 ? 0 : Number(((elucidados / registros) * 100).toFixed(1));
+    const months = Array.from({ length: 12 }, (_, index) => {
+      const monthDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (11 - index), 1);
+      const key = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
 
       return {
-        ...byYear[year],
-        percentual,
+        key,
+        mes: monthDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        registros: 0,
+        elucidados: 0,
+        percentual: 0,
       };
     });
-  }, [cases]);
 
-  const navigateToCvliYearCases = (entry: { year?: number; payload?: { year?: number } }, dataKey: 'registros' | 'elucidados') => {
-    const year = entry?.year ?? entry?.payload?.year;
-    if (!year) return;
+    const byMonth = months.reduce<Record<string, { key: string; mes: string; registros: number; elucidados: number; percentual: number }>>((acc, item) => {
+      acc[item.key] = item;
+      return acc;
+    }, {});
 
-    if (dataKey === 'registros') {
-      navigate({
-        to: '/cases',
-        search: {
-          severity: 'CVLI',
-          type: 'IP,APF',
-          createdYear: String(year),
-        },
-      });
-      return;
-    }
+    cases.forEach((c) => {
+      if ((c.type === 'IP' || c.type === 'APF') && c.crimeClassification === 'CVLI' && c.createdAt) {
+        const createdAt = new Date(c.createdAt);
+        if (!Number.isNaN(createdAt.getTime())) {
+          const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+          if (byMonth[key]) byMonth[key].registros += 1;
+        }
+      }
 
-    navigate({
-      to: '/cases',
-      search: {
-        situation: 'Relatado',
-        reportYear: String(year),
-      },
+      if (c.situation === 'Relatado' && c.reportSent && c.reportDate) {
+        const reportDate = new Date(c.reportDate);
+        if (!Number.isNaN(reportDate.getTime())) {
+          const key = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
+          if (byMonth[key]) byMonth[key].elucidados += 1;
+        }
+      }
     });
-  };
+
+    return months.map((month) => {
+      const percentual = month.registros === 0 ? 0 : Number(((month.elucidados / month.registros) * 100).toFixed(1));
+      return { ...month, percentual };
+    });
+  }, [cases]);
 
   const criticalCases = useMemo(() => {
     return cases
@@ -571,7 +540,7 @@ export function DashboardView() {
               <ResponsiveContainer width="100%" height={260}>
                 <ComposedChart data={cvliElucidationData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1d2a30" />
-                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#dbe2ea' }} />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#dbe2ea' }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#9cb0bf' }} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#9cb0bf' }} domain={[0, 100]} />
                   <Tooltip
@@ -582,8 +551,8 @@ export function DashboardView() {
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Bar yAxisId="left" dataKey="registros" name="Registros" fill="#3b82f6" radius={[6, 6, 0, 0]} cursor="pointer" onClick={(entry) => navigateToCvliYearCases(entry, 'registros')} />
-                  <Bar yAxisId="left" dataKey="elucidados" name="Elucidados" fill="#12d681" radius={[6, 6, 0, 0]} cursor="pointer" onClick={(entry) => navigateToCvliYearCases(entry, 'elucidados')} />
+                  <Bar yAxisId="left" dataKey="registros" name="Registros" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="elucidados" name="Elucidados" fill="#12d681" radius={[6, 6, 0, 0]} />
                   <Line yAxisId="right" type="monotone" dataKey="percentual" name="Taxa de elucidação (%)" stroke="#f8fafc" strokeWidth={2} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -593,7 +562,7 @@ export function DashboardView() {
               <table className="w-full min-w-[320px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Ano</th>
+                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Mês</th>
                     <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Registros</th>
                     <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Elucidados</th>
                     <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">%</th>
@@ -601,8 +570,8 @@ export function DashboardView() {
                 </thead>
                 <tbody>
                   {cvliElucidationData.map((item) => (
-                    <tr key={item.year} className="border-b border-white/5 last:border-b-0">
-                      <td className="px-2.5 py-1.5 text-white">{item.year}</td>
+                    <tr key={item.key} className="border-b border-white/5 last:border-b-0">
+                      <td className="px-2.5 py-1.5 text-white">{item.mes}</td>
                       <td className="px-2.5 py-1.5 text-white">{item.registros}</td>
                       <td className="px-2.5 py-1.5 text-white">{item.elucidados}</td>
                       <td className="px-2.5 py-1.5 font-bold text-primary">{item.percentual.toFixed(1)}%</td>
@@ -620,7 +589,7 @@ export function DashboardView() {
           </div>
         )}
 
-        <p className="mt-3 text-center text-xs text-white/55">Clique nas barras para filtrar os casos do ano selecionado</p>
+        <p className="mt-3 text-center text-xs text-white/55">Últimos 12 meses (ordem cronológica)</p>
       </motion.div>
     </div>
   );
