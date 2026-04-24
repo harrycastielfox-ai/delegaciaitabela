@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Clock, AlertCircle, Info, Bell, Shield, ArrowUpRight, Filter } from 'lucide-react';
+import { AlertTriangle, Clock, AlertCircle, Info, Bell, Shield, ArrowUpRight } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { buildCaseAlerts, listCases } from '@/lib/cases-repository';
 import type { Alert } from '@/lib/types';
@@ -28,6 +28,13 @@ const severityLabel: Record<string, string> = {
 };
 
 const severityOrder = ['high', 'medium', 'low'] as const;
+
+function getTypeIconClass(type: string, items: Alert[]): string {
+  if (type === 'overdue') return 'text-destructive';
+  if (type === 'near_deadline') return 'text-warning';
+  if (type === 'missing_data') return items.some((a) => a.severity === 'high') ? 'text-destructive' : 'text-warning';
+  return 'text-primary';
+}
 
 export function AlertsView() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -135,21 +142,28 @@ export function AlertsView() {
             return (
               <motion.div key={type} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="section-card">
                 <div className="mb-4 flex items-center gap-2">
-                  <Icon className={`h-4 w-4 ${type === 'overdue' ? 'text-destructive' : type === 'near_deadline' ? 'text-warning' : 'text-primary'}`} />
+                  <Icon className={`h-4 w-4 ${getTypeIconClass(type, items)}`} />
                   <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">{typeLabel[type]}</h3>
                   <span className="ml-auto rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">{items.length}</span>
                 </div>
                 <div className="space-y-2">
                   {items.map((a) => (
-                    <Link key={a.id} to="/cases/$caseId" params={{ caseId: a.caseId }} className="group flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3 transition-colors hover:bg-muted/70">
+                    <div key={a.id} className="group flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3 transition-colors hover:bg-muted/70">
                       <div className={`h-2 w-2 rounded-full ${a.severity === 'high' ? 'bg-destructive' : a.severity === 'medium' ? 'bg-warning' : 'bg-primary'}`} />
                       <span className="font-mono text-[11px] font-semibold text-primary">{a.casePpe}</span>
                       <span className="flex-1 text-xs text-foreground">{a.message}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${a.severity === 'high' ? 'badge-high' : a.severity === 'medium' ? 'badge-medium' : 'badge-low'}`}>
                         {severityLabel[a.severity]}
                       </span>
-                      <ArrowUpRight className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </Link>
+                      <Link
+                        to={a.type === 'missing_data' ? '/cases/edit/$caseId' : '/cases/$caseId'}
+                        params={{ caseId: a.caseId }}
+                        className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-background/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary/10"
+                      >
+                        {a.type === 'missing_data' ? 'Corrigir dados' : 'Abrir caso'}
+                        <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    </div>
                   ))}
                 </div>
               </motion.div>

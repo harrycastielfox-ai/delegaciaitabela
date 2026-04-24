@@ -197,8 +197,21 @@ function daysUntil(targetDate: string, now: Date): number | null {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
+function isMissingEssentialField(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  return false;
+}
+
 export function buildCaseAlerts(cases: InvestigationCase[], now: Date = new Date()): Alert[] {
   const alerts: Alert[] = [];
+  const essentialFields: Array<{ key: keyof InvestigationCase; label: string }> = [
+    { key: 'investigatorResponsible', label: 'investigador' },
+    { key: 'team', label: 'equipe' },
+    { key: 'crimeClassification', label: 'tipificação' },
+    { key: 'type', label: 'tipo' },
+    { key: 'ppe', label: 'identificação' },
+  ];
 
   cases.forEach((caseData) => {
     if (isFinalizedSituation(caseData.situation)) return;
@@ -270,6 +283,29 @@ export function buildCaseAlerts(cases: InvestigationCase[], now: Date = new Date
         type: 'no_update',
         message: `Sem atualização há ${daysSinceUpdate} dias`,
         severity: 'medium',
+        createdAt: now.toISOString(),
+      });
+    }
+
+    const missingFields = essentialFields
+      .filter(({ key }) => isMissingEssentialField(caseData[key]))
+      .map(({ label }) => label);
+
+    if (missingFields.length > 0) {
+      console.log('Missing fields:', caseData.id, missingFields);
+
+      const defaultMessage = missingFields.length === 1
+        ? `Inquérito sem ${missingFields[0]}`
+        : `Inquérito com dados incompletos: ${missingFields.join(', ')}`;
+
+      const isCvli = caseData.severity === 'CVLI';
+      alerts.push({
+        id: `alert-missing-${caseData.id}`,
+        caseId: caseData.id,
+        casePpe: caseData.ppe,
+        type: 'missing_data',
+        message: isCvli ? `⚠️ CVLI com dados incompletos: ${missingFields.join(', ')}` : defaultMessage,
+        severity: isCvli ? 'high' : 'medium',
         createdAt: now.toISOString(),
       });
     }
