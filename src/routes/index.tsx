@@ -14,7 +14,7 @@ export const Route = createFileRoute('/')({
 
 function IndexPage() {
   return (
-    <AppLayout>
+    <AppLayout fluid>
       <DashboardView />
     </AppLayout>
   );
