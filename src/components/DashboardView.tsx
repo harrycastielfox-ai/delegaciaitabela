@@ -7,7 +7,6 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  ChevronRight,
   Clock3,
   FileText,
   Filter,
@@ -83,9 +82,8 @@ function KpiCard({
   value,
   subtitle,
   icon: Icon,
-  tint,
   border,
-  iconBg,
+  iconClass,
   to,
   search,
 }: {
@@ -93,9 +91,8 @@ function KpiCard({
   value: number;
   subtitle: string;
   icon: LucideIcon;
-  tint: string;
   border: string;
-  iconBg: string;
+  iconClass: string;
   to?: '/cases';
   search?: Record<string, string>;
 }) {
@@ -103,18 +100,18 @@ function KpiCard({
     <>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/75">{label}</p>
-          <p className="mt-2 text-4xl font-black leading-none tracking-tight text-white">{value}</p>
-          <p className="mt-2 text-xs text-white/60">{subtitle}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/65">{label}</p>
+          <p className="mt-1.5 text-3xl font-black leading-none tracking-tight text-white">{value}</p>
+          <p className="mt-1.5 text-[11px] text-white/50">{subtitle}</p>
         </div>
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-          <Icon className="h-5 w-5 text-white" />
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-current/35 bg-white/[0.03] ${iconClass}`}>
+          <Icon className="h-4 w-4" />
         </div>
       </div>
     </>
   );
 
-  const classes = `kpi-card relative overflow-hidden rounded-2xl border bg-gradient-to-br ${tint} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.35)] ${border}`;
+  const classes = `kpi-card relative h-full overflow-hidden rounded-xl border bg-[#0b1217] p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,0,0,0.28)] ${border}`;
 
   if (to) {
     return (
@@ -361,15 +358,19 @@ export function DashboardView() {
   }, [cvliElucidationData]);
 
   const resolutionRate = stats.total === 0 ? 0 : Math.round((stats.closed / stats.total) * 100);
+  const hasEnoughStatusData = chartByStatus.length > 2;
+  const hasEnoughTeamData = chartByTeam.length > 2;
+  const hasEnoughSeverityData = chartBySeverity.length > 2;
+  const hasEnoughCvliData = cvliElucidationData.length > 2;
 
   const refreshLabel = lastUpdatedAt
     ? lastUpdatedAt.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     : '---';
 
-  const chartCardClass = 'section-card rounded-2xl border border-white/10 bg-[#0a1217] p-4';
+  const chartCardClass = 'section-card h-full rounded-xl border border-white/10 bg-[#0b1217] p-4';
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#050a0d] p-3 md:p-4 lg:p-5">
+    <div className="space-y-5 rounded-2xl bg-[#050a0d] p-3 md:p-4 lg:p-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-3">
@@ -407,13 +408,13 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
-        <KpiCard label="Total" value={stats.total} subtitle="Inquéritos cadastrados" icon={FileText} tint="from-[#09241a] to-[#0f151c]" border="border-[#1de28f66] hover:border-[#2cffab]" iconBg="bg-[#1de28f33]" />
-        <KpiCard label="Em andamento" value={stats.inProgress} subtitle={`${stats.total ? Math.round((stats.inProgress / stats.total) * 100) : 0}% do total`} icon={Clock3} tint="from-[#0a2035] to-[#0f151c]" border="border-[#2a9fff5a] hover:border-[#38bdf8]" iconBg="bg-[#2a9fff33]" to="/cases" search={{ situation: 'Em andamento' }} />
-        <KpiCard label="Finalizados" value={stats.closed} subtitle={`${stats.total ? Math.round((stats.closed / stats.total) * 100) : 0}% do total`} icon={CheckCircle2} tint="from-[#082722] to-[#0f151c]" border="border-[#12d68166] hover:border-[#10e692]" iconBg="bg-[#12d68133]" to="/cases" search={{ finalized: 'true' }} />
-        <KpiCard label="Alta prioridade" value={stats.highPriority} subtitle="Requer atenção" icon={TrendingUp} tint="from-[#2d2108] to-[#18140d]" border="border-[#f7c9485f] hover:border-[#facc15]" iconBg="bg-[#f7c9483d]" to="/cases" search={{ priority: 'Alta' }} />
-        <KpiCard label="Vencidos" value={stats.overdue} subtitle="Prazo expirado" icon={AlertTriangle} tint="from-[#2f0d12] to-[#1b1012]" border="border-[#ef44446b] hover:border-[#ef4444]" iconBg="bg-[#ef444438]" to="/cases" search={{ overdue: 'true' }} />
-        <KpiCard label="Sem prazo" value={stats.noDeadline} subtitle="Sem data limite" icon={CalendarOff} tint="from-[#25123a] to-[#130f1a]" border="border-[#a78bfa69] hover:border-[#a78bfa]" iconBg="bg-[#a78bfa33]" to="/cases" search={{ noDeadline: 'true' }} />
-        <KpiCard label="Sem atualização" value={stats.noRecentUpdate} subtitle="+ 15 dias" icon={AlertCircle} tint="from-[#322305] to-[#18140d]" border="border-[#f59e0b67] hover:border-[#f59e0b]" iconBg="bg-[#f59e0b36]" to="/cases" search={{ noUpdate: 'true' }} />
+        <KpiCard label="Total" value={stats.total} subtitle="Inquéritos cadastrados" icon={FileText} border="border-emerald-400/40 hover:border-emerald-300" iconClass="text-emerald-300" />
+        <KpiCard label="Em andamento" value={stats.inProgress} subtitle={`${stats.total ? Math.round((stats.inProgress / stats.total) * 100) : 0}% do total`} icon={Clock3} border="border-emerald-400/40 hover:border-emerald-300" iconClass="text-emerald-300" to="/cases" search={{ situation: 'Em andamento' }} />
+        <KpiCard label="Finalizados" value={stats.closed} subtitle={`${stats.total ? Math.round((stats.closed / stats.total) * 100) : 0}% do total`} icon={CheckCircle2} border="border-emerald-400/40 hover:border-emerald-300" iconClass="text-emerald-300" to="/cases" search={{ finalized: 'true' }} />
+        <KpiCard label="Alta prioridade" value={stats.highPriority} subtitle="Requer atenção" icon={TrendingUp} border="border-amber-400/40 hover:border-amber-300" iconClass="text-amber-300" to="/cases" search={{ priority: 'Alta' }} />
+        <KpiCard label="Vencidos" value={stats.overdue} subtitle="Prazo expirado" icon={AlertTriangle} border="border-red-400/50 hover:border-red-300" iconClass="text-red-300" to="/cases" search={{ overdue: 'true' }} />
+        <KpiCard label="Sem prazo" value={stats.noDeadline} subtitle="Sem data limite" icon={CalendarOff} border="border-amber-400/40 hover:border-amber-300" iconClass="text-amber-300" to="/cases" search={{ noDeadline: 'true' }} />
+        <KpiCard label="Sem atualização" value={stats.noRecentUpdate} subtitle="+ 15 dias" icon={AlertCircle} border="border-amber-400/40 hover:border-amber-300" iconClass="text-amber-300" to="/cases" search={{ noUpdate: 'true' }} />
       </div>
 
       {error && (
@@ -424,8 +425,8 @@ export function DashboardView() {
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <motion.div {...anim(0.15)} className="section-card rounded-2xl border border-red-500/35 bg-gradient-to-br from-red-950/35 to-[#120f13] p-4">
-          <div className="mb-3 flex items-center justify-between border-b border-red-500/20 pb-3">
+        <motion.div {...anim(0.15)} className="section-card h-full rounded-xl border border-red-500/35 bg-[#0b1217] p-4">
+          <div className="mb-2 flex items-center justify-between border-b border-red-500/20 pb-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-400" />
               <h3 className="text-sm font-black uppercase tracking-[0.08em] text-red-400">Casos Críticos</h3>
@@ -435,14 +436,14 @@ export function DashboardView() {
           {criticalCases.length === 0 ? (
             <EmptyState icon={ShieldAlert} title="Sem casos críticos" description="Nenhum inquérito crítico ou vencido no momento." />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {criticalCases.map((c) => (
-                <Link key={c.id} to="/cases/$caseId" params={{ caseId: c.id }} className="group flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-[#140f12] px-3 py-2.5 transition hover:border-red-400/40">
+                <Link key={c.id} to="/cases/$caseId" params={{ caseId: c.id }} className="group flex items-center justify-between gap-2 rounded-lg border border-red-500/20 bg-[#11161b] px-2.5 py-2 transition hover:border-red-400/40">
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-sm font-semibold text-white">{c.ppe}</p>
-                    <p className="text-xs text-red-200/85">{isCaseOverdue(c) ? 'Prazo vencido' : 'Alta prioridade CVLI'}</p>
+                    <p className="truncate font-mono text-sm font-bold text-white">{c.ppe}</p>
+                    <p className="text-[11px] text-red-200/85">{isCaseOverdue(c) ? 'Vencido há prazo excedido' : 'Alta prioridade CVLI'}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-red-300/70 transition group-hover:text-red-200" />
+                  <span className="rounded-md border border-red-400/35 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-300">Vencido</span>
                 </Link>
               ))}
             </div>
@@ -452,8 +453,8 @@ export function DashboardView() {
           </Link>
         </motion.div>
 
-        <motion.div {...anim(0.2)} className="section-card rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-950/30 to-[#14120d] p-4">
-          <div className="mb-3 flex items-center justify-between border-b border-amber-400/20 pb-3">
+        <motion.div {...anim(0.2)} className="section-card h-full rounded-xl border border-amber-400/30 bg-[#0b1217] p-4">
+          <div className="mb-2 flex items-center justify-between border-b border-amber-400/20 pb-2">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-amber-300" />
               <h3 className="text-sm font-black uppercase tracking-[0.08em] text-amber-300">Alertas Recentes</h3>
@@ -463,21 +464,21 @@ export function DashboardView() {
           {topAlerts.length === 0 ? (
             <EmptyState icon={Info} title="Sem alertas recentes" description="Tudo sob controle neste momento." />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {topAlerts.slice(0, 4).map((a) => (
-                <Link key={a.id} to="/cases/$caseId" params={{ caseId: a.caseId }} className="flex items-center justify-between gap-3 rounded-xl border border-amber-300/15 bg-[#14120d] px-3 py-2.5 transition hover:border-amber-300/35">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-white/90">{a.message}</p>
-                    <p className="truncate font-mono text-xs text-white/55">{a.casePpe}</p>
+                <Link key={a.id} to="/cases/$caseId" params={{ caseId: a.caseId }} className="flex items-center justify-between gap-2 rounded-lg border border-amber-300/15 bg-[#11161b] px-2.5 py-2 transition hover:border-amber-300/35">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="rounded-md border border-amber-400/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">{a.severity}</span>
+                    <p className="truncate text-sm text-white/90">{a.message} · <span className="font-mono text-[11px] text-white/50">{a.casePpe}</span></p>
                   </div>
-                  <span className="text-xs text-amber-200/80">{a.time}</span>
+                  <span className="shrink-0 text-[11px] text-amber-200/80">{a.time}</span>
                 </Link>
               ))}
             </div>
           )}
         </motion.div>
 
-        <motion.div {...anim(0.25)} className="section-card rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/25 to-[#0f1513] p-4">
+        <motion.div {...anim(0.25)} className="section-card h-full rounded-xl border border-emerald-500/30 bg-[#0b1217] p-4">
           <h3 className="mb-3 text-sm font-black uppercase tracking-[0.08em] text-primary">Situação Operacional</h3>
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between rounded-lg border border-white/5 bg-[#0b1114] px-3 py-2"><span className="text-white/70">Inquéritos ativos</span><span className="font-bold text-cyan-300">{stats.inProgress}</span></div>
@@ -512,6 +513,8 @@ export function DashboardView() {
           <h3 className="mb-3 text-lg font-black uppercase tracking-[0.06em] text-primary">Por Situação</h3>
           {chartByStatus.length === 0 ? (
             <EmptyState icon={Activity} title="Nenhum dado disponível ainda" />
+          ) : !hasEnoughStatusData ? (
+            <EmptyState icon={Activity} title="Dados insuficientes para análise" />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -529,6 +532,8 @@ export function DashboardView() {
           <h3 className="mb-3 text-lg font-black uppercase tracking-[0.06em] text-primary">Por Equipe</h3>
           {chartByTeam.length === 0 ? (
             <EmptyState icon={Users} title="Nenhum dado disponível ainda" />
+          ) : !hasEnoughTeamData ? (
+            <EmptyState icon={Users} title="Dados insuficientes para análise" />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={chartByTeam.slice(0, 6)} layout="vertical" margin={{ left: 8, right: 12 }}>
@@ -546,6 +551,8 @@ export function DashboardView() {
           <h3 className="mb-3 text-lg font-black uppercase tracking-[0.06em] text-primary">Por Gravidade</h3>
           {chartBySeverity.length === 0 ? (
             <EmptyState icon={ShieldAlert} title="Nenhum dado disponível ainda" />
+          ) : !hasEnoughSeverityData ? (
+            <EmptyState icon={ShieldAlert} title="Dados insuficientes para análise" />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -560,15 +567,17 @@ export function DashboardView() {
         </motion.div>
       </div>
 
-      <motion.div {...anim(0.45)} className="section-card rounded-2xl border border-white/10 bg-[#0a1217] p-4">
-        <h3 className="mb-4 text-xl font-black tracking-tight text-primary">CVLI – Comparativo de Elucidação</h3>
+      <motion.div {...anim(0.45)} className="section-card rounded-xl border border-white/10 bg-[#0b1217] p-4">
+        <h3 className="mb-3 text-lg font-black tracking-tight text-primary">CVLI – Comparativo de Elucidação</h3>
 
         {cvliElucidationData.length === 0 ? (
           <EmptyState icon={ShieldAlert} title="Nenhum dado CVLI cadastrado ainda" description="Cadastre inquéritos CVLI para visualizar o comparativo anual." />
+        ) : !hasEnoughCvliData ? (
+          <EmptyState icon={ShieldAlert} title="Dados insuficientes para análise" />
         ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
             <div className="xl:col-span-3">
-              <ResponsiveContainer width="100%" height={310}>
+              <ResponsiveContainer width="100%" height={260}>
                 <ComposedChart data={cvliElucidationData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1d2a30" />
                   <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#dbe2ea' }} />
@@ -589,30 +598,30 @@ export function DashboardView() {
               </ResponsiveContainer>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-white/10 xl:col-span-2">
+            <div className="overflow-x-auto rounded-lg border border-white/10 xl:col-span-2">
               <table className="w-full min-w-[320px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-white/65">Ano</th>
-                    <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-white/65">Registros</th>
-                    <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-white/65">Elucidados</th>
-                    <th className="px-3 py-2 font-bold uppercase tracking-[0.1em] text-white/65">%</th>
+                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Ano</th>
+                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Registros</th>
+                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Elucidados</th>
+                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">%</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cvliElucidationData.map((item) => (
                     <tr key={item.year} className="border-b border-white/5 last:border-b-0">
-                      <td className="px-3 py-2 text-white">{item.year}</td>
-                      <td className="px-3 py-2 text-white">{item.registros}</td>
-                      <td className="px-3 py-2 text-white">{item.elucidados}</td>
-                      <td className="px-3 py-2 font-bold text-primary">{item.percentual.toFixed(1)}%</td>
+                      <td className="px-2.5 py-1.5 text-white">{item.year}</td>
+                      <td className="px-2.5 py-1.5 text-white">{item.registros}</td>
+                      <td className="px-2.5 py-1.5 text-white">{item.elucidados}</td>
+                      <td className="px-2.5 py-1.5 font-bold text-primary">{item.percentual.toFixed(1)}%</td>
                     </tr>
                   ))}
                   <tr className="bg-white/5">
-                    <td className="px-3 py-2 text-sm font-black text-white">TOTAL</td>
-                    <td className="px-3 py-2 text-sm font-black text-white">{cvliTotals.registros}</td>
-                    <td className="px-3 py-2 text-sm font-black text-white">{cvliTotals.elucidados}</td>
-                    <td className="px-3 py-2 text-sm font-black text-primary">{cvliTotals.registros ? ((cvliTotals.elucidados / cvliTotals.registros) * 100).toFixed(1) : '0.0'}%</td>
+                    <td className="px-2.5 py-1.5 text-sm font-black text-white">TOTAL</td>
+                    <td className="px-2.5 py-1.5 text-sm font-black text-white">{cvliTotals.registros}</td>
+                    <td className="px-2.5 py-1.5 text-sm font-black text-white">{cvliTotals.elucidados}</td>
+                    <td className="px-2.5 py-1.5 text-sm font-black text-primary">{cvliTotals.registros ? ((cvliTotals.elucidados / cvliTotals.registros) * 100).toFixed(1) : '0.0'}%</td>
                   </tr>
                 </tbody>
               </table>
