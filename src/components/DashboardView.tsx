@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  Expand,
   FileText,
   Filter,
   Info,
@@ -20,7 +21,6 @@ import {
 } from 'lucide-react';
 import {
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -64,8 +64,8 @@ const SEVERITY_COLORS: Record<string, string> = {
   Drogas: '#a78bfa',
   Outros: '#34d399',
 };
-const STATUS_ORDER = ['Em andamento', 'Instaurado', 'Relatado', 'Remetido', 'Arquivado'];
-const SEVERITY_ORDER = ['CVLI', 'CVP', 'Patrimonial', 'Drogas', 'Outros'];
+const STATUS_ORDER = ['Em andamento', 'Finalizados', 'Outros'];
+const SEVERITY_ORDER = ['CVLI', 'CVP', 'Patrimonial'];
 
 const tooltipStyle = {
   backgroundColor: '#0d1419',
@@ -211,15 +211,14 @@ export function DashboardView() {
   }, [cases]);
 
   const chartByStatus = useMemo(() => {
-    const map: Record<string, number> = {};
-    cases.forEach((c) => {
-      map[c.situation] = (map[c.situation] || 0) + 1;
-    });
-    const known = STATUS_ORDER.filter((name) => map[name]).map((name) => ({ name, value: map[name] }));
-    const otherTotal = Object.entries(map)
-      .filter(([name]) => !STATUS_ORDER.includes(name))
-      .reduce((acc, [, value]) => acc + value, 0);
-    return otherTotal ? [...known, { name: 'Outros', value: otherTotal }] : known;
+    const finalized = cases.filter((c) => isFinalizedSituation(c.situation)).length;
+    const inProgress = cases.filter((c) => c.situation === 'Em andamento').length;
+    const others = Math.max(cases.length - finalized - inProgress, 0);
+    return [
+      { name: 'Em andamento', value: inProgress },
+      { name: 'Finalizados', value: finalized },
+      { name: 'Outros', value: others },
+    ].filter((item) => item.value > 0);
   }, [cases]);
 
   const chartByTeam = useMemo(() => {
@@ -230,41 +229,31 @@ export function DashboardView() {
     });
 
     return Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
+      .map(([name, count]) => ({ name, count, percentage: stats.total ? Math.round((count / stats.total) * 100) : 0 }))
       .sort((a, b) => b.count - a.count);
-  }, [cases]);
+  }, [cases, stats.total]);
 
   const chartBySeverity = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map = { CVLI: 0, CVP: 0, Patrimonial: 0 };
     cases.forEach((c) => {
-      map[c.severity] = (map[c.severity] || 0) + 1;
+      if (c.severity === 'CVLI' || c.severity === 'CVP' || c.severity === 'Patrimonial') {
+        map[c.severity] += 1;
+      }
     });
-    const known = SEVERITY_ORDER.filter((name) => map[name]).map((name) => ({ name, value: map[name] }));
-    const otherTotal = Object.entries(map)
-      .filter(([name]) => !SEVERITY_ORDER.includes(name))
-      .reduce((acc, [, value]) => acc + value, 0);
-    return otherTotal ? [...known, { name: 'Outros', value: otherTotal }] : known;
+    return SEVERITY_ORDER.map((name) => ({ name, value: map[name as keyof typeof map] })).filter((item) => item.value > 0);
   }, [cases]);
 
   const cvliElucidationData = useMemo(() => {
-    const today = new Date();
-    const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const months = Array.from({ length: 12 }, (_, index) => {
-      const monthDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (11 - index), 1);
-      const key = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-
-      return {
-        key,
-        mes: monthDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 6 }, (_, index) => currentYear - (5 - index));
+    const byYear = years.reduce<Record<number, { key: string; ano: number; registros: number; elucidados: number; percentual: number }>>((acc, year) => {
+      acc[year] = {
+        key: String(year),
+        ano: year,
         registros: 0,
         elucidados: 0,
         percentual: 0,
       };
-    });
-
-    const byMonth = months.reduce<Record<string, { key: string; mes: string; registros: number; elucidados: number; percentual: number }>>((acc, item) => {
-      acc[item.key] = item;
       return acc;
     }, {});
 
@@ -272,23 +261,24 @@ export function DashboardView() {
       if ((c.type === 'IP' || c.type === 'APF') && c.crimeClassification === 'CVLI' && c.createdAt) {
         const createdAt = new Date(c.createdAt);
         if (!Number.isNaN(createdAt.getTime())) {
-          const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-          if (byMonth[key]) byMonth[key].registros += 1;
+          const year = createdAt.getFullYear();
+          if (byYear[year]) byYear[year].registros += 1;
         }
       }
 
       if (c.situation === 'Relatado' && c.reportSent && c.reportDate) {
         const reportDate = new Date(c.reportDate);
         if (!Number.isNaN(reportDate.getTime())) {
-          const key = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
-          if (byMonth[key]) byMonth[key].elucidados += 1;
+          const year = reportDate.getFullYear();
+          if (byYear[year]) byYear[year].elucidados += 1;
         }
       }
     });
 
-    return months.map((month) => {
-      const percentual = month.registros === 0 ? 0 : Number(((month.elucidados / month.registros) * 100).toFixed(1));
-      return { ...month, percentual };
+    return years.map((year) => {
+      const item = byYear[year];
+      const percentual = item.registros === 0 ? 0 : Number(((item.elucidados / item.registros) * 100).toFixed(1));
+      return { ...item, percentual };
     });
   }, [cases]);
 
@@ -369,6 +359,8 @@ export function DashboardView() {
     : '---';
 
   const chartCardClass = 'section-card h-full rounded-xl border border-white/10 bg-[#0b1217] p-4';
+  const totalByStatus = chartByStatus.reduce((acc, item) => acc + item.value, 0);
+  const totalBySeverity = chartBySeverity.reduce((acc, item) => acc + item.value, 0);
 
   return (
     <div className="space-y-5 rounded-2xl bg-[#050a0d] p-3 md:p-4 lg:p-5 2xl:p-6">
@@ -517,53 +509,88 @@ export function DashboardView() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <motion.div {...anim(0.3)} className={chartCardClass}>
-          <h3 className="mb-3 text-lg font-black uppercase tracking-[0.06em] text-primary">Por Situação</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-black uppercase tracking-[0.06em] text-primary">Por Situação</h3>
+            <Expand className="h-4 w-4 text-white/40" />
+          </div>
           {chartByStatus.length === 0 ? (
             <EmptyState icon={Activity} title="Nenhum dado disponível ainda" />
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={chartByStatus} dataKey="value" nameKey="name" cx="42%" cy="50%" innerRadius={62} outerRadius={92} stroke="#0a1217" strokeWidth={2}>
-                  {chartByStatus.map((entry, i) => <Cell key={i} fill={STATUS_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
-                </Pie>
-                <Legend wrapperStyle={{ fontSize: '11px', color: '#dbe2ea' }} />
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="grid h-[260px] grid-cols-1 items-center gap-4 md:grid-cols-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={52} outerRadius={86} stroke="#0a1217" strokeWidth={2}>
+                    {chartByStatus.map((entry, i) => <Cell key={i} fill={STATUS_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-3">
+                <p className="text-4xl font-black leading-none text-white">{totalByStatus}</p>
+                <p className="text-xs text-white/60">Total</p>
+                {chartByStatus.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-white/90"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[item.name] || '#fff' }} />{item.name}</span>
+                    <span className="text-white/70">{item.value} ({totalByStatus ? Math.round((item.value / totalByStatus) * 100) : 0}%)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </motion.div>
 
         <motion.div {...anim(0.35)} className={chartCardClass}>
-          <h3 className="mb-3 text-lg font-black uppercase tracking-[0.06em] text-primary">Por Equipe</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-black uppercase tracking-[0.06em] text-primary">Por Equipe</h3>
+            <Expand className="h-4 w-4 text-white/40" />
+          </div>
           {chartByTeam.length === 0 ? (
             <EmptyState icon={Users} title="Nenhum dado disponível ainda" />
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={chartByTeam.slice(0, 6)} layout="vertical" margin={{ left: 8, right: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1d2a30" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: '#9cb0bf' }} />
-                <YAxis type="category" dataKey="name" width={95} tick={{ fontSize: 11, fill: '#dbe2ea' }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#12d681" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-3 pt-2">
+              {chartByTeam.slice(0, 4).map((team) => (
+                <div key={team.name} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/80">{team.name}</span>
+                    <span className="text-white/60">{team.count} ({team.percentage}%)</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-white/5">
+                    <div className="h-2.5 rounded-full bg-emerald-400" style={{ width: `${team.percentage}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </motion.div>
 
         <motion.div {...anim(0.4)} className={chartCardClass}>
-          <h3 className="mb-3 text-lg font-black uppercase tracking-[0.06em] text-primary">Por Gravidade</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-black uppercase tracking-[0.06em] text-primary">Por Gravidade</h3>
+            <Expand className="h-4 w-4 text-white/40" />
+          </div>
           {chartBySeverity.length === 0 ? (
             <EmptyState icon={ShieldAlert} title="Nenhum dado disponível ainda" />
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={chartBySeverity} dataKey="value" nameKey="name" cx="42%" cy="50%" innerRadius={62} outerRadius={92} stroke="#0a1217" strokeWidth={2}>
-                  {chartBySeverity.map((entry, i) => <Cell key={i} fill={SEVERITY_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
-                </Pie>
-                <Legend wrapperStyle={{ fontSize: '11px', color: '#dbe2ea' }} />
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="grid h-[260px] grid-cols-1 items-center gap-4 md:grid-cols-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartBySeverity} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={52} outerRadius={86} stroke="#0a1217" strokeWidth={2}>
+                    {chartBySeverity.map((entry, i) => <Cell key={i} fill={SEVERITY_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-3">
+                <p className="text-4xl font-black leading-none text-white">{totalBySeverity}</p>
+                <p className="text-xs text-white/60">Total</p>
+                {chartBySeverity.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-white/90"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SEVERITY_COLORS[item.name] || '#fff' }} />{item.name}</span>
+                    <span className="text-white/70">{item.value} ({totalBySeverity ? Math.round((item.value / totalBySeverity) * 100) : 0}%)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </motion.div>
       </div>
@@ -579,7 +606,7 @@ export function DashboardView() {
               <ResponsiveContainer width="100%" height={260}>
                 <ComposedChart data={cvliElucidationData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1d2a30" />
-                  <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#dbe2ea' }} />
+                  <XAxis dataKey="ano" tick={{ fontSize: 11, fill: '#dbe2ea' }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#9cb0bf' }} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#9cb0bf' }} domain={[0, 100]} />
                   <Tooltip
@@ -601,7 +628,7 @@ export function DashboardView() {
               <table className="w-full min-w-[320px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Mês</th>
+                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Ano</th>
                     <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Registros</th>
                     <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Elucidados</th>
                     <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">%</th>
@@ -610,7 +637,7 @@ export function DashboardView() {
                 <tbody>
                   {cvliElucidationData.map((item) => (
                     <tr key={item.key} className="border-b border-white/5 last:border-b-0">
-                      <td className="px-2.5 py-1.5 text-white">{item.mes}</td>
+                      <td className="px-2.5 py-1.5 text-white">{item.ano}</td>
                       <td className="px-2.5 py-1.5 text-white">{item.registros}</td>
                       <td className="px-2.5 py-1.5 text-white">{item.elucidados}</td>
                       <td className="px-2.5 py-1.5 font-bold text-primary">{item.percentual.toFixed(1)}%</td>
@@ -628,7 +655,7 @@ export function DashboardView() {
           </div>
         )}
 
-        <p className="mt-3 text-center text-xs text-white/55">Últimos 12 meses (ordem cronológica)</p>
+        <p className="mt-3 text-center text-xs text-white/55">Últimos 6 anos (ordem cronológica)</p>
       </motion.div>
     </div>
   );
