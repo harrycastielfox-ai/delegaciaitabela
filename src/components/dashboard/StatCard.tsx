@@ -33,10 +33,10 @@ export function StatCard({
 
   return (
     <div
-      className={`stat-card stat-card-border h-full min-h-[124px] p-5 ${className}`}
+      className={`stat-card stat-card-border h-full min-h-[104px] p-4 ${className}`}
       style={{ ['--stat-color' as never]: color }}
     >
-      <div className="relative z-10 flex items-start justify-between gap-4">
+      <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span
             className="block text-[10px] font-extrabold uppercase tracking-[0.16em]"
@@ -45,22 +45,22 @@ export function StatCard({
             {label}
           </span>
 
-          <div className="mt-3 text-4xl font-black leading-none tracking-tight tabular-nums" style={{ color }}>
+          <div className="mt-2 text-3xl font-black leading-none tracking-tight tabular-nums md:text-[2rem]" style={{ color }}>
             {value}
           </div>
 
-          <div className="mt-2 text-xs text-muted-foreground">{hint}</div>
+          <div className="mt-1.5 text-[11px] text-muted-foreground">{hint}</div>
         </div>
 
         <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border"
           style={{
             backgroundColor: `color-mix(in oklab, ${color} 14%, transparent)`,
             borderColor: `color-mix(in oklab, ${color} 28%, transparent)`,
             color,
           }}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-3.5 w-3.5" />
         </div>
       </div>
     </div>

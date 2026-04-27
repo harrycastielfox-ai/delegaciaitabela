@@ -6,7 +6,7 @@ export function AppLayout({ children, fluid = false }: { children: ReactNode; fl
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <main className="ml-[260px] flex-1 overflow-auto">
-        <div className={fluid ? 'w-full px-6 py-6 xl:px-8' : 'mx-auto max-w-[1400px] px-8 py-8'}>
+        <div className={fluid ? 'w-full px-3 py-3 md:px-4 md:py-4 xl:px-5' : 'mx-auto max-w-[1400px] px-8 py-8'}>
           {children}
         </div>
       </main>
