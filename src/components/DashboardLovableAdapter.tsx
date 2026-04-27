@@ -57,6 +57,10 @@ function Legend({ color, label, line = false }: { color: string; label: string; 
   );
 }
 
+function StatusDot({ color }: { color: string }) {
+  return <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />;
+}
+
 function DonutPanel({
   title,
   data,
@@ -245,11 +249,70 @@ export function DashboardLovableAdapter() {
   }, [cases, stats.total]);
 
   const pendencias = [
-    { label: 'Prazos vencidos', value: stats.prazoCritico },
-    { label: 'Sem prazo definido', value: stats.semPrazo },
-    { label: 'Sem atualização (> 15 dias)', value: stats.semAtualizacao },
-    { label: 'Prioridade alta', value: stats.prioridadeAlta },
+    {
+      label: 'Prazos vencidos',
+      description: 'Procedimentos com prazo já expirado e exigindo despacho imediato.',
+      value: stats.prazoCritico,
+      color: COLORS.destructive,
+    },
+    {
+      label: 'Sem prazo definido',
+      description: 'Casos sem data limite registrada para acompanhamento.',
+      value: stats.semPrazo,
+      color: COLORS.warning,
+    },
+    {
+      label: 'Casos sem atualização há mais de 15 dias',
+      description: 'Unidades sem movimentação recente e risco de acúmulo operacional.',
+      value: stats.semAtualizacao,
+      color: COLORS.info,
+    },
+    {
+      label: 'Prioridade alta',
+      description: 'Ocorrências críticas com necessidade de resposta prioritária.',
+      value: stats.prioridadeAlta,
+      color: COLORS.purple,
+    },
   ].filter((row) => row.value > 0);
+
+  const alertasCriticos = [
+    {
+      title: 'Inquéritos em prazo crítico',
+      subtitle: 'Menos de 3 dias para vencer ou já vencidos.',
+      value: stats.prazoCritico,
+      color: COLORS.destructive,
+      badgeClass: 'border-destructive/30 bg-destructive/15 text-destructive',
+    },
+    {
+      title: 'Casos com prioridade alta',
+      subtitle: 'Demandam decisão rápida da chefia.',
+      value: stats.prioridadeAlta,
+      color: COLORS.warning,
+      badgeClass: 'border-warning/30 bg-warning/15 text-warning',
+    },
+    {
+      title: 'Sem atualização recente',
+      subtitle: 'Sem movimentação registrada há mais de 15 dias.',
+      value: stats.semAtualizacao,
+      color: COLORS.info,
+      badgeClass: 'border-info/30 bg-info/15 text-info',
+    },
+    {
+      title: 'Sem prazo definido',
+      subtitle: 'Casos sem data alvo de acompanhamento.',
+      value: stats.semPrazo,
+      color: COLORS.purple,
+      badgeClass: 'border-purple/30 bg-purple/15 text-purple',
+    },
+  ];
+
+  const typeLegend: Record<string, string> = {
+    IP: 'Inquérito Policial',
+    APF: 'Auto de Prisão em Flagrante',
+    TCO: 'Termo Circunstanciado de Ocorrência',
+    BOC: 'Boletim de Ocorrência Circunstanciado',
+    VPI: 'Verificação Preliminar de Informação',
+  };
 
   const refreshLabel = lastUpdatedAt
     ? lastUpdatedAt.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -282,44 +345,70 @@ export function DashboardLovableAdapter() {
       ) : null}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Panel title="ALERTAS CRÍTICOS" accent="destructive" icon={<AlertOctagon className="h-4 w-4 text-destructive" />}>
+        <Panel title="ALERTAS CRÍTICOS" accent="destructive" icon={<AlertOctagon className="h-4 w-4 text-destructive" />} className="h-full">
           <ul className="space-y-3">
-            <li className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium">Inquéritos com prazo vencido</span>
-              <span className="rounded border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">{stats.prazoCritico}</span>
-            </li>
-            <li className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium">Prioridade alta</span>
-              <span className="rounded border border-warning/30 bg-warning/15 px-2 py-0.5 text-xs font-bold text-warning">{stats.prioridadeAlta}</span>
-            </li>
-            <li className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium">Sem atualização recente</span>
-              <span className="rounded border border-info/30 bg-info/15 px-2 py-0.5 text-xs font-bold text-info">{stats.semAtualizacao}</span>
-            </li>
-          </ul>
-        </Panel>
-
-        <Panel title="PENDÊNCIAS POR CATEGORIA" accent="warning" icon={<Bell className="h-4 w-4 text-warning" />}>
-          <ul className="space-y-3">
-            {pendencias.length === 0 ? <li className="text-sm text-muted-foreground">Sem pendências críticas no momento.</li> : null}
-            {pendencias.map((p) => (
-              <li key={p.label} className="flex items-center justify-between gap-3">
-                <span className="text-sm">{p.label}</span>
-                <span className="text-sm font-bold text-warning tabular-nums">{p.value}</span>
+            {alertasCriticos.map((item) => (
+              <li key={item.title} className="flex items-start justify-between gap-3 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5">
+                <div className="min-w-0 space-y-1">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <StatusDot color={item.color} />
+                    <span className="truncate">{item.title}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+                </div>
+                <span className={`rounded-md border px-2 py-0.5 text-xs font-bold tabular-nums ${item.badgeClass}`}>{item.value}</span>
               </li>
             ))}
           </ul>
         </Panel>
 
-        <Panel title="META DE CONCLUSÃO" accent="success">
-          <ul className="space-y-2.5 text-sm">
-            <li className="flex items-center justify-between"><span>Procedimentos cadastrados</span><strong>{stats.total}</strong></li>
-            <li className="flex items-center justify-between"><span>Concluídos</span><strong className="text-success">{stats.concluidos}</strong></li>
-            <li className="flex items-center justify-between"><span>Em andamento</span><strong className="text-warning">{stats.emAndamento}</strong></li>
-            <li className="flex items-center justify-between"><span>Pendências ativas</span><strong className="text-purple">{stats.prazoCritico + stats.semPrazo + stats.semAtualizacao}</strong></li>
+        <Panel title="PENDÊNCIAS POR CATEGORIA" accent="warning" icon={<Bell className="h-4 w-4 text-warning" />} className="h-full">
+          <ul className="space-y-3.5">
+            {pendencias.length === 0 ? <li className="text-sm text-muted-foreground">Sem pendências críticas no momento.</li> : null}
+            {pendencias.map((p) => (
+              <li key={p.label} className="space-y-1.5 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <StatusDot color={p.color} />
+                    • {p.label}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: p.color }}>
+                    {p.value}
+                  </span>
+                </div>
+                <p className="pl-4 text-xs text-muted-foreground">{p.description}</p>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+
+        <Panel title="META DE CONCLUSÃO" accent="success" className="h-full">
+          <ul className="space-y-3 text-sm">
+            <li className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><StatusDot color={COLORS.foreground} />Procedimentos cadastrados</span>
+              <strong className="text-base tabular-nums">{stats.total}</strong>
+            </li>
+            <li className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><StatusDot color={COLORS.success} />Concluídos</span>
+              <strong className="text-base tabular-nums text-success">{stats.concluidos}</strong>
+            </li>
+            <li className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><StatusDot color={COLORS.warning} />Em andamento</span>
+              <strong className="text-base tabular-nums text-warning">{stats.emAndamento}</strong>
+            </li>
+            <li className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><StatusDot color={COLORS.purple} />Pendências ativas</span>
+              <strong className="text-base tabular-nums text-purple">{stats.prazoCritico + stats.semPrazo + stats.semAtualizacao}</strong>
+            </li>
           </ul>
           <div className="mt-4 rounded-lg border border-success/20 bg-success/5 p-3">
-            <p className="text-xs font-semibold">Taxa de conclusão atual: {stats.taxaConclusao}%</p>
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold">
+              <span>Taxa de conclusão atual</span>
+              <span className="text-sm tabular-nums">{stats.taxaConclusao}%</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-success/15">
+              <div className="h-full rounded-full bg-success transition-all" style={{ width: `${stats.taxaConclusao}%` }} />
+            </div>
           </div>
         </Panel>
       </div>
@@ -328,11 +417,14 @@ export function DashboardLovableAdapter() {
         <DonutPanel title="POR STATUS" data={bySituation} accent="success" />
         <DonutPanel title="POR PRIORIDADE" data={byPriority} accent="warning" />
 
-        <Panel title="PROCEDIMENTOS POR TIPO" accent="success" action={<Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />}>
+        <Panel title="PROCEDIMENTOS POR TIPO" accent="success" action={<Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />} className="h-full">
           <ul className="space-y-3.5">
             {byType.map((t) => (
               <li key={t.sigla} className="flex items-center gap-3">
-                <span className="w-12 text-xs font-bold text-muted-foreground">{t.sigla}</span>
+                <div className="w-24">
+                  <p className="text-xs font-bold text-muted-foreground">{t.sigla}</p>
+                  <p className="truncate text-[11px] text-muted-foreground/80">{typeLegend[t.sigla] || 'Categoria sem legenda cadastrada'}</p>
+                </div>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full bg-success" style={{ width: `${stats.total ? (t.total / stats.total) * 100 : 0}%` }} />
                 </div>
@@ -340,6 +432,9 @@ export function DashboardLovableAdapter() {
               </li>
             ))}
           </ul>
+          <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
+            <p className="font-semibold">Legenda: IP = Inquérito Policial • APF = Auto de Prisão em Flagrante • TCO = Termo Circunstanciado de Ocorrência.</p>
+          </div>
         </Panel>
       </div>
 
