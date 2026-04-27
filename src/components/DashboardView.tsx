@@ -4,11 +4,9 @@ import { Link } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
-  AlertCircle,
   AlertOctagon,
   AlertTriangle,
   Bell,
-  CalendarOff,
   CheckCircle2,
   Clock3,
   Expand,
@@ -279,8 +277,20 @@ export function DashboardView() {
     const overdue = cases.filter((c) => isCaseOverdue(c)).length;
     const noDeadline = cases.filter((c) => isCaseNoDeadline(c)).length;
     const noRecentUpdate = cases.filter((c) => isCaseNoRecentUpdate(c)).length;
+    const defendantArrested = cases.filter((c) => c.defendantArrested).length;
+    const protectiveMeasures = cases.filter((c) => c.protectiveMeasure).length;
 
-    return { total, inProgress, closed, highPriority, overdue, noDeadline, noRecentUpdate };
+    return {
+      total,
+      inProgress,
+      closed,
+      highPriority,
+      overdue,
+      noDeadline,
+      noRecentUpdate,
+      defendantArrested,
+      protectiveMeasures,
+    };
   }, [cases]);
 
   const chartByStatus = useMemo(() => {
@@ -509,7 +519,7 @@ export function DashboardView() {
   }));
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6 rounded-2xl bg-background/80 p-3 md:p-4 lg:p-6">
+    <div className="w-full max-w-none space-y-4 rounded-2xl bg-background/80 px-1 py-1 md:space-y-5 md:px-2 md:py-2">
       <PageHeader
         title="Painel de Controle"
         subtitle="Visão operacional dos inquéritos policiais"
@@ -518,7 +528,7 @@ export function DashboardView() {
         onRefresh={loadCases}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
         <motion.div {...anim()}>
           <StatCard label="Total" value={stats.total} hint="Inquéritos cadastrados" icon={FileText} tone="success" />
         </motion.div>
@@ -560,14 +570,26 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div {...anim(0.15)}>
-          <Link to="/cases" search={{ noDeadline: 'true' }} className="block h-full">
-            <StatCard label="Sem prazo" value={stats.noDeadline} hint="Sem data limite" icon={CalendarOff} tone="purple" />
+          <Link to="/cases" search={{}} className="block h-full">
+            <StatCard
+              label="Réu preso"
+              value={stats.defendantArrested}
+              hint="Investigados custodiados"
+              icon={Gavel}
+              tone="purple"
+            />
           </Link>
         </motion.div>
 
         <motion.div {...anim(0.18)}>
-          <Link to="/cases" search={{ noUpdate: 'true' }} className="block h-full">
-            <StatCard label="Sem atualização" value={stats.noRecentUpdate} hint="+ 15 dias" icon={AlertCircle} tone="warning" />
+          <Link to="/cases" search={{}} className="block h-full">
+            <StatCard
+              label="Medida protetiva"
+              value={stats.protectiveMeasures}
+              hint="Com proteção ativa"
+              icon={Shield}
+              tone="warning"
+            />
           </Link>
         </motion.div>
       </div>
@@ -581,7 +603,7 @@ export function DashboardView() {
         </Panel>
       ) : null}
 
-      <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
         <motion.div {...anim(0.15)}>
           <Panel
             title="CASOS CRÍTICOS"
@@ -729,7 +751,7 @@ export function DashboardView() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <DonutPanel title="POR SITUAÇÃO" data={statusDonutData} total={totalByStatus} accent="success" />
         <DonutPanel title="POR GRAVIDADE" data={severityDonutData} total={totalBySeverity} accent="destructive" />
 
@@ -738,7 +760,7 @@ export function DashboardView() {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Panel title="CVLI — COMPARATIVO ANUAL" accent="success" className="xl:col-span-2">
           <div className="mb-3 flex flex-wrap items-center gap-5">
             <LegendItem color="var(--info)" label="Registros" />
@@ -821,7 +843,7 @@ export function DashboardView() {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Panel title="PENDÊNCIAS POR CATEGORIA" accent="warning" icon={<Bell className="h-4 w-4 text-warning" />}>
           {pendingByCategory.length === 0 ? (
             <EmptyState icon={Info} title="Nenhuma pendência ativa" description="Os indicadores principais não apontam pendências no momento." />

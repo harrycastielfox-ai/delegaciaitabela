@@ -19,25 +19,25 @@ export function PageHeader({
   showActions = true,
 }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <header className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
       <div>
-        <div className="mb-1 flex items-center gap-3">
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-primary/40 bg-primary/15 shadow-[0_0_20px_rgba(17,205,122,0.25)]">
+        <div className="mb-0.5 flex items-center gap-2.5">
+          <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-primary/40 bg-primary/15 shadow-[0_0_20px_rgba(17,205,122,0.25)]">
             <Activity className="h-4 w-4 text-primary" />
-            <span className="absolute inline-flex h-9 w-9 animate-ping rounded-full border border-primary/20" />
+            <span className="absolute inline-flex h-8 w-8 animate-ping rounded-full border border-primary/20" />
           </span>
 
-          <h1 className="text-3xl font-black tracking-tight text-foreground">{title}</h1>
+          <h1 className="text-2xl font-black tracking-tight text-foreground xl:text-[1.75rem]">{title}</h1>
         </div>
 
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+        <p className="text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
       </div>
 
       {showActions ? (
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-2.5">
           <Link
             to="/register"
-            className="inline-flex items-center gap-2 rounded-xl border border-primary/50 bg-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/30"
+            className="inline-flex items-center gap-2 rounded-xl border border-primary/50 bg-primary/20 px-3.5 py-2 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/30"
           >
             <Sparkles className="h-4 w-4" />
             Novo Inquérito
@@ -46,7 +46,7 @@ export function PageHeader({
           <button
             type="button"
             disabled
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground"
+            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-semibold text-muted-foreground"
             title="Filtros rápidos em breve"
           >
             <Filter className="h-4 w-4" />
@@ -56,7 +56,7 @@ export function PageHeader({
           <button
             type="button"
             onClick={onRefresh}
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-muted-foreground transition hover:text-foreground"
+            className="inline-flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-muted-foreground transition hover:text-foreground"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Atualizado: {updatedAt || '---'}
