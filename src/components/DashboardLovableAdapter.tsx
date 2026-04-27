@@ -306,14 +306,6 @@ export function DashboardLovableAdapter() {
     },
   ];
 
-  const typeLegend: Record<string, string> = {
-    IP: 'Inquérito Policial',
-    APF: 'Auto de Prisão em Flagrante',
-    TCO: 'Termo Circunstanciado de Ocorrência',
-    BOC: 'Boletim de Ocorrência Circunstanciado',
-    VPI: 'Verificação Preliminar de Informação',
-  };
-
   const refreshLabel = lastUpdatedAt
     ? lastUpdatedAt.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     : '---';
@@ -428,22 +420,19 @@ export function DashboardLovableAdapter() {
         <DonutPanel title="POR PRIORIDADE" data={byPriority} accent="warning" />
 
         <Panel title="PROCEDIMENTOS POR TIPO" accent="success" action={<Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />} className="h-full">
-          <ul className="space-y-3.5">
-            {byType.map((t) => (
-              <li key={t.sigla} className="flex items-center gap-3">
-                <div className="w-24">
-                  <p className="text-xs font-bold text-muted-foreground">{t.sigla}</p>
-                  <p className="truncate text-[11px] text-muted-foreground/80">{typeLegend[t.sigla] || 'Categoria sem legenda cadastrada'}</p>
-                </div>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+          <ul className="space-y-2.5">
+            {byType.slice(0, 5).map((t) => (
+              <li key={t.sigla} className="flex items-center gap-2.5">
+                <span className="w-12 text-xs font-bold text-muted-foreground">{t.sigla}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/80">
                   <div className="h-full rounded-full bg-success" style={{ width: `${stats.total ? (t.total / stats.total) * 100 : 0}%` }} />
                 </div>
-                <span className="w-16 text-right text-xs tabular-nums text-muted-foreground">{t.total}</span>
+                <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{t.total}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-6 rounded-xl border border-border/70 bg-muted/20 p-3 text-[11px] text-muted-foreground">
-            <p className="font-semibold">Legenda: IP = Inquérito Policial • APF = Auto de Prisão em Flagrante • TCO = Termo Circunstanciado de Ocorrência.</p>
+          <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3 text-[11px] text-muted-foreground">
+            <p>IP: Inquéritos · APF: Flagrantes · TCO: Termos · BOC: Boletins · AIAI: Ato Infracional</p>
           </div>
         </Panel>
       </div>
