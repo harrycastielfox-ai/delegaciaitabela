@@ -61,6 +61,58 @@ function StatusDot({ color }: { color: string }) {
   return <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />;
 }
 
+function normalizeSeverityCategory(c: InvestigationCase): string {
+  const textSources = [
+    c.crimeClassification,
+    c.severity,
+    c.type,
+    c.motivation,
+    c.observations,
+    c.pendingActions,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (textSources.includes('cvli')) return 'CVLI';
+
+  if (/(patrimonio|patrimonial|furto|roubo|receptacao)/.test(textSources)) {
+    return 'Crimes Patrimoniais';
+  }
+
+  if (/(violencia domestica|maria da penha)/.test(textSources)) {
+    return 'Violência Doméstica';
+  }
+
+  if (/(drogas|trafico|entorpecente)/.test(textSources)) {
+    return 'Drogas';
+  }
+
+  if (/(sexual|estupro|vulneravel)/.test(textSources)) {
+    return 'Crimes Sexuais';
+  }
+
+  if (/(transito|ctb)/.test(textSources)) {
+    return 'Crimes de Trânsito';
+  }
+
+  if (/(miae|medida investigativa)/.test(textSources)) {
+    return 'MIAE';
+  }
+
+  if (/(crianca|adolescente|eca)/.test(textSources)) {
+    return 'Violência Criança/Adolescente';
+  }
+
+  if (/(homicidio|tentativa|lesao|ameaca)/.test(textSources)) {
+    return 'Crimes Violentos';
+  }
+
+  return 'Outros';
+}
+
 function DonutPanel({
   title,
   data,
@@ -229,10 +281,17 @@ export function DashboardLovableAdapter() {
   }, [cases]);
 
   const bySeverity = useMemo(() => {
-    const all = ['CVLI', 'CVP', 'Patrimonial', 'Drogas', 'Outros'] as const;
-    return all
-      .map((name) => ({ name, value: cases.filter((c) => c.severity === name).length }))
-      .filter((item) => item.value > 0);
+    const map = new Map<string, number>();
+
+    cases.forEach((c) => {
+      const category = normalizeSeverityCategory(c);
+      map.set(category, (map.get(category) || 0) + 1);
+    });
+
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
   }, [cases]);
 
   const byTeam = useMemo(() => {
@@ -511,12 +570,12 @@ export function DashboardLovableAdapter() {
         </Panel>
 
         <Panel title="ANÁLISE POR GRAVIDADE" accent="destructive">
-          <div className="mt-6 min-h-80">
+          <div className="mt-6 h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySeverity} layout="vertical" margin={{ top: 5, right: 20, bottom: 0, left: 10 }}>
                 <CartesianGrid stroke="var(--border)" horizontal={false} />
                 <XAxis type="number" stroke="var(--muted-foreground)" fontSize={11} />
-                <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={10} width={110} />
+                <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={10} width={190} />
                 <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="value" fill={COLORS.destructive} radius={[0, 4, 4, 0]} />
               </BarChart>
