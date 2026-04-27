@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AppLayout } from '@/components/AppLayout';
-import { DashboardView } from '@/components/DashboardView';
+import { DashboardLovableAdapter } from '@/components/DashboardLovableAdapter';
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/')({
 function IndexPage() {
   return (
     <AppLayout fluid>
-      <DashboardView />
+      <DashboardLovableAdapter />
     </AppLayout>
   );
 }
