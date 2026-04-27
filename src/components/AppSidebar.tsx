@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
-import { LayoutDashboard, FileText, PlusCircle, Bell, History, Shield, ChevronRight, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, PlusCircle, Bell, History, Shield, ChevronRight, User, LogOut, Gavel } from 'lucide-react';
 import { buildCaseAlerts, listCases } from '@/lib/cases-repository';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/' as const, label: 'Dashboard', icon: LayoutDashboard, description: 'Painel de controle' },
   { to: '/cases' as const, label: 'Inquéritos', icon: FileText, description: 'Gestão de casos' },
   { to: '/register' as const, label: 'Novo Caso', icon: PlusCircle, description: 'Registrar inquérito' },
+  { to: '/representacoes' as const, label: 'Representações', icon: Gavel, description: 'Medidas judiciais' },
   { to: '/alerts' as const, label: 'Alertas', icon: Bell, description: 'Notificações ativas', showBadge: true },
   { to: '/audit' as const, label: 'Auditoria', icon: History, description: 'Log de alterações' },
 ];

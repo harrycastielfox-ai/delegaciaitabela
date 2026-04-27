@@ -13,8 +13,12 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RepresentacoesIndexRouteImport } from './routes/representacoes.index'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
+import { Route as RepresentacoesNovaRouteImport } from './routes/representacoes.nova'
+import { Route as RepresentacoesRepresentationIdIndexRouteImport } from './routes/representacoes.$representationId.index'
 import { Route as CasesCaseIdIndexRouteImport } from './routes/cases.$caseId.index'
+import { Route as RepresentacoesRepresentationIdEditarRouteImport } from './routes/representacoes.$representationId.editar'
 import { Route as CasesCaseIdEditRouteImport } from './routes/cases.$caseId.edit'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -37,16 +41,38 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RepresentacoesIndexRoute = RepresentacoesIndexRouteImport.update({
+  id: '/representacoes/',
+  path: '/representacoes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CasesIndexRoute = CasesIndexRouteImport.update({
   id: '/cases/',
   path: '/cases/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RepresentacoesNovaRoute = RepresentacoesNovaRouteImport.update({
+  id: '/representacoes/nova',
+  path: '/representacoes/nova',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepresentacoesRepresentationIdIndexRoute =
+  RepresentacoesRepresentationIdIndexRouteImport.update({
+    id: '/representacoes/$representationId/',
+    path: '/representacoes/$representationId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CasesCaseIdIndexRoute = CasesCaseIdIndexRouteImport.update({
   id: '/cases/$caseId/',
   path: '/cases/$caseId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RepresentacoesRepresentationIdEditarRoute =
+  RepresentacoesRepresentationIdEditarRouteImport.update({
+    id: '/representacoes/$representationId/editar',
+    path: '/representacoes/$representationId/editar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CasesCaseIdEditRoute = CasesCaseIdEditRouteImport.update({
   id: '/cases/$caseId/edit',
   path: '/cases/$caseId/edit',
@@ -58,18 +84,26 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof AlertsRoute
   '/audit': typeof AuditRoute
   '/register': typeof RegisterRoute
+  '/representacoes/nova': typeof RepresentacoesNovaRoute
   '/cases/': typeof CasesIndexRoute
+  '/representacoes/': typeof RepresentacoesIndexRoute
   '/cases/$caseId/edit': typeof CasesCaseIdEditRoute
+  '/representacoes/$representationId/editar': typeof RepresentacoesRepresentationIdEditarRoute
   '/cases/$caseId/': typeof CasesCaseIdIndexRoute
+  '/representacoes/$representationId/': typeof RepresentacoesRepresentationIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
   '/audit': typeof AuditRoute
   '/register': typeof RegisterRoute
+  '/representacoes/nova': typeof RepresentacoesNovaRoute
   '/cases': typeof CasesIndexRoute
+  '/representacoes': typeof RepresentacoesIndexRoute
   '/cases/$caseId/edit': typeof CasesCaseIdEditRoute
+  '/representacoes/$representationId/editar': typeof RepresentacoesRepresentationIdEditarRoute
   '/cases/$caseId': typeof CasesCaseIdIndexRoute
+  '/representacoes/$representationId': typeof RepresentacoesRepresentationIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,9 +111,13 @@ export interface FileRoutesById {
   '/alerts': typeof AlertsRoute
   '/audit': typeof AuditRoute
   '/register': typeof RegisterRoute
+  '/representacoes/nova': typeof RepresentacoesNovaRoute
   '/cases/': typeof CasesIndexRoute
+  '/representacoes/': typeof RepresentacoesIndexRoute
   '/cases/$caseId/edit': typeof CasesCaseIdEditRoute
+  '/representacoes/$representationId/editar': typeof RepresentacoesRepresentationIdEditarRoute
   '/cases/$caseId/': typeof CasesCaseIdIndexRoute
+  '/representacoes/$representationId/': typeof RepresentacoesRepresentationIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,27 +126,39 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/audit'
     | '/register'
+    | '/representacoes/nova'
     | '/cases/'
+    | '/representacoes/'
     | '/cases/$caseId/edit'
+    | '/representacoes/$representationId/editar'
     | '/cases/$caseId/'
+    | '/representacoes/$representationId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/alerts'
     | '/audit'
     | '/register'
+    | '/representacoes/nova'
     | '/cases'
+    | '/representacoes'
     | '/cases/$caseId/edit'
+    | '/representacoes/$representationId/editar'
     | '/cases/$caseId'
+    | '/representacoes/$representationId'
   id:
     | '__root__'
     | '/'
     | '/alerts'
     | '/audit'
     | '/register'
+    | '/representacoes/nova'
     | '/cases/'
+    | '/representacoes/'
     | '/cases/$caseId/edit'
+    | '/representacoes/$representationId/editar'
     | '/cases/$caseId/'
+    | '/representacoes/$representationId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,9 +166,13 @@ export interface RootRouteChildren {
   AlertsRoute: typeof AlertsRoute
   AuditRoute: typeof AuditRoute
   RegisterRoute: typeof RegisterRoute
+  RepresentacoesNovaRoute: typeof RepresentacoesNovaRoute
   CasesIndexRoute: typeof CasesIndexRoute
+  RepresentacoesIndexRoute: typeof RepresentacoesIndexRoute
   CasesCaseIdEditRoute: typeof CasesCaseIdEditRoute
+  RepresentacoesRepresentationIdEditarRoute: typeof RepresentacoesRepresentationIdEditarRoute
   CasesCaseIdIndexRoute: typeof CasesCaseIdIndexRoute
+  RepresentacoesRepresentationIdIndexRoute: typeof RepresentacoesRepresentationIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/representacoes/': {
+      id: '/representacoes/'
+      path: '/representacoes'
+      fullPath: '/representacoes/'
+      preLoaderRoute: typeof RepresentacoesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cases/': {
       id: '/cases/'
       path: '/cases'
@@ -158,11 +219,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CasesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/representacoes/nova': {
+      id: '/representacoes/nova'
+      path: '/representacoes/nova'
+      fullPath: '/representacoes/nova'
+      preLoaderRoute: typeof RepresentacoesNovaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/representacoes/$representationId/': {
+      id: '/representacoes/$representationId/'
+      path: '/representacoes/$representationId'
+      fullPath: '/representacoes/$representationId/'
+      preLoaderRoute: typeof RepresentacoesRepresentationIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cases/$caseId/': {
       id: '/cases/$caseId/'
       path: '/cases/$caseId'
       fullPath: '/cases/$caseId/'
       preLoaderRoute: typeof CasesCaseIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/representacoes/$representationId/editar': {
+      id: '/representacoes/$representationId/editar'
+      path: '/representacoes/$representationId/editar'
+      fullPath: '/representacoes/$representationId/editar'
+      preLoaderRoute: typeof RepresentacoesRepresentationIdEditarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cases/$caseId/edit': {
@@ -180,9 +262,15 @@ const rootRouteChildren: RootRouteChildren = {
   AlertsRoute: AlertsRoute,
   AuditRoute: AuditRoute,
   RegisterRoute: RegisterRoute,
+  RepresentacoesNovaRoute: RepresentacoesNovaRoute,
   CasesIndexRoute: CasesIndexRoute,
+  RepresentacoesIndexRoute: RepresentacoesIndexRoute,
   CasesCaseIdEditRoute: CasesCaseIdEditRoute,
+  RepresentacoesRepresentationIdEditarRoute:
+    RepresentacoesRepresentationIdEditarRoute,
   CasesCaseIdIndexRoute: CasesCaseIdIndexRoute,
+  RepresentacoesRepresentationIdIndexRoute:
+    RepresentacoesRepresentationIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

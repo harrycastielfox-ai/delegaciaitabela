@@ -74,6 +74,81 @@ export type Database = {
         }
         Relationships: []
       }
+      representations: {
+        Row: {
+          compliance_date: string | null
+          compliance_status: string
+          court_branch: string | null
+          created_at: string
+          deferimento_date: string | null
+          deferimento_status: string
+          diligence_result: string | null
+          due_date: string | null
+          granted_deadline_days: number | null
+          id: string
+          judicial_process_number: string | null
+          notes: string | null
+          ppe_linked: string
+          representation_date: string
+          representation_type: string
+          responsible_team: string | null
+          source_import_ref: string | null
+          status: string
+          target_name: string | null
+          updated_at: string
+          updated_by: string | null
+          victim: string | null
+        }
+        Insert: {
+          compliance_date?: string | null
+          compliance_status?: string
+          court_branch?: string | null
+          created_at?: string
+          deferimento_date?: string | null
+          deferimento_status?: string
+          diligence_result?: string | null
+          due_date?: string | null
+          granted_deadline_days?: number | null
+          id?: string
+          judicial_process_number?: string | null
+          notes?: string | null
+          ppe_linked: string
+          representation_date: string
+          representation_type: string
+          responsible_team?: string | null
+          source_import_ref?: string | null
+          status?: string
+          target_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          victim?: string | null
+        }
+        Update: {
+          compliance_date?: string | null
+          compliance_status?: string
+          court_branch?: string | null
+          created_at?: string
+          deferimento_date?: string | null
+          deferimento_status?: string
+          diligence_result?: string | null
+          due_date?: string | null
+          granted_deadline_days?: number | null
+          id?: string
+          judicial_process_number?: string | null
+          notes?: string | null
+          ppe_linked?: string
+          representation_date?: string
+          representation_type?: string
+          responsible_team?: string | null
+          source_import_ref?: string | null
+          status?: string
+          target_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          victim?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
