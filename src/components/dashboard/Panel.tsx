@@ -29,18 +29,18 @@ export function Panel({
   accent = 'muted',
   children,
   className = '',
-  bodyClassName = 'p-6',
+  bodyClassName = 'p-5',
 }: PanelProps) {
   const color = accentColor[accent];
 
   return (
     <section
-      className={`overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-200 hover:shadow-md ${className}`}
+      className={`overflow-hidden rounded-xl border bg-card/95 shadow-sm transition-all duration-200 hover:shadow-sm ${className}`}
       style={{
-        borderColor: `color-mix(in oklab, ${color} 24%, var(--border))`,
+        borderColor: `color-mix(in oklab, ${color} 14%, var(--border))`,
       }}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between gap-3 border-b border-border/80 px-5 py-3.5">
         <div className="flex min-w-0 items-center gap-2.5">
           {icon}
           <h3

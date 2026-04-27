@@ -370,7 +370,7 @@ export function DashboardLovableAdapter() {
     : '---';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Painel de Controle"
         subtitle="Delegacia Territorial de Itabela — visão executiva em dados reais"
@@ -379,7 +379,7 @@ export function DashboardLovableAdapter() {
         onRefresh={loadCases}
       />
 
-      <div className="grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-7">
         <StatCard label="TOTAL" value={stats.total} hint="Procedimentos cadastrados" icon={FileText} tone="success" />
         <StatCard label="EM ANDAMENTO" value={stats.emAndamento} hint={`${stats.total ? Math.round((stats.emAndamento / stats.total) * 100) : 0}% do total`} icon={Clock3} tone="info" />
         <StatCard label="CONCLUÍDOS" value={stats.concluidos} hint={`${stats.taxaConclusao}% taxa atual`} icon={CheckCircle2} tone="primary" />
@@ -395,16 +395,16 @@ export function DashboardLovableAdapter() {
         </Panel>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel
           title="ALERTAS CRÍTICOS"
           accent="destructive"
           icon={<AlertOctagon className="h-4 w-4 text-destructive" />}
-          className="h-full bg-destructive/5"
+          className="h-full"
         >
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {alertasCriticos.map((item) => (
-              <li key={item.title} className="flex items-center justify-between gap-4 rounded-xl border border-destructive/20 bg-card/80 px-4 py-3">
+              <li key={item.title} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3 py-2.5">
                 <div className="min-w-0 space-y-1.5">
                   <p className="flex items-center gap-2 text-sm font-semibold">
                     <StatusDot color={item.color} />
@@ -422,12 +422,12 @@ export function DashboardLovableAdapter() {
           title="PENDÊNCIAS POR CATEGORIA"
           accent="warning"
           icon={<Bell className="h-4 w-4 text-warning" />}
-          className="h-full bg-warning/5"
+          className="h-full"
         >
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {pendencias.length === 0 ? <li className="text-sm text-muted-foreground">Sem pendências críticas no momento.</li> : null}
             {pendencias.map((p) => (
-              <li key={p.label} className="space-y-2 rounded-xl border border-warning/20 bg-card/80 px-4 py-3">
+              <li key={p.label} className="space-y-1.5 rounded-lg border border-border/70 bg-card px-3 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-sm font-semibold">
                     <StatusDot color={p.color} />
@@ -443,8 +443,8 @@ export function DashboardLovableAdapter() {
           </ul>
         </Panel>
 
-        <Panel title="META DE CONCLUSÃO" accent="success" className="h-full bg-gradient-to-b from-success/10 to-card">
-          <ul className="space-y-4 text-sm">
+        <Panel title="META DE CONCLUSÃO" accent="success" className="h-full">
+          <ul className="space-y-3 text-sm">
             <li className="flex items-center justify-between">
               <span className="flex items-center gap-2"><StatusDot color={COLORS.foreground} />Procedimentos cadastrados</span>
               <strong className="text-base tabular-nums">{stats.total}</strong>
@@ -462,7 +462,7 @@ export function DashboardLovableAdapter() {
               <strong className="text-base tabular-nums text-purple">{stats.prazoCritico + stats.semPrazo + stats.semAtualizacao}</strong>
             </li>
           </ul>
-          <div className="mt-6 rounded-2xl border border-success/30 bg-card/80 p-4">
+          <div className="mt-4 rounded-xl border border-border/70 bg-card p-3">
             <div className="mb-3 flex items-center justify-between text-xs font-semibold">
               <span>Taxa de conclusão atual</span>
               <span className="text-2xl font-extrabold tabular-nums text-success">{stats.taxaConclusao}%</span>
@@ -474,7 +474,7 @@ export function DashboardLovableAdapter() {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <DonutPanel title="POR STATUS" data={bySituation} accent="success" />
         <DonutPanel title="POR PRIORIDADE" data={byPriority} accent="warning" />
 
@@ -496,7 +496,7 @@ export function DashboardLovableAdapter() {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Panel title="CVLI — COMPARATIVO ANUAL" accent="success" className="xl:col-span-2">
           <div className="mb-3 flex items-center gap-5 text-xs">
             <Legend color={COLORS.info} label="Registros" />
@@ -543,7 +543,7 @@ export function DashboardLovableAdapter() {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Panel title="ANÁLISE POR LOCALIDADE" accent="warning">
           <div className="max-h-72 overflow-auto">
             <table className="w-full text-sm">
