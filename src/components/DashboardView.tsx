@@ -1,30 +1,32 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   AlertCircle,
+  AlertOctagon,
   AlertTriangle,
+  Bell,
+  CalendarOff,
   CheckCircle2,
   Clock3,
   Expand,
   FileText,
-  Filter,
+  Gavel,
   Info,
-  CalendarOff,
-  RefreshCw,
+  Maximize2,
+  Shield,
   ShieldAlert,
-  Sparkles,
   TrendingUp,
   Users,
 } from 'lucide-react';
 import {
   Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
-  Legend,
   Line,
   Pie,
   PieChart,
@@ -41,6 +43,9 @@ import {
   listCases,
 } from '@/lib/cases-repository';
 import type { InvestigationCase } from '@/lib/types';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { Panel } from '@/components/dashboard/Panel';
+import { StatCard } from '@/components/dashboard/StatCard';
 
 const anim = (delay = 0) => ({
   initial: { opacity: 0, y: 8 },
@@ -49,14 +54,17 @@ const anim = (delay = 0) => ({
 });
 
 const CHART_COLORS = ['#12d681', '#21a5ff', '#facc15', '#f87171', '#a78bfa', '#f59e0b'];
+
 const STATUS_COLORS: Record<string, string> = {
   'Em andamento': '#3ddc84',
   Instaurado: '#2dd4bf',
   Relatado: '#1da1f2',
   Remetido: '#f59e0b',
   Arquivado: '#facc15',
+  Finalizados: '#12d681',
   Outros: '#a78bfa',
 };
+
 const SEVERITY_COLORS: Record<string, string> = {
   CVLI: '#ff4d4f',
   CVP: '#facc15',
@@ -64,15 +72,15 @@ const SEVERITY_COLORS: Record<string, string> = {
   Drogas: '#a78bfa',
   Outros: '#34d399',
 };
-const STATUS_ORDER = ['Em andamento', 'Finalizados', 'Outros'];
+
 const SEVERITY_ORDER = ['CVLI', 'CVP', 'Patrimonial'];
 
 const tooltipStyle = {
-  backgroundColor: '#0d1419',
-  border: '1px solid rgba(35, 252, 143, 0.18)',
+  backgroundColor: 'var(--card)',
+  border: '1px solid var(--border)',
   borderRadius: '10px',
   fontSize: '11px',
-  color: '#f4f7fa',
+  color: 'var(--foreground)',
   boxShadow: '0 10px 28px rgba(0,0,0,0.5)',
 };
 
@@ -86,7 +94,7 @@ function EmptyState({
   description?: string;
 }) {
   return (
-    <div className="flex h-full min-h-[170px] flex-col items-center justify-center rounded-xl border border-white/5 bg-[#0b1217] px-4 text-center">
+    <div className="flex h-full min-h-[170px] flex-col items-center justify-center rounded-xl border border-border bg-background/35 px-4 text-center">
       <Icon className="mb-3 h-5 w-5 text-primary/80" />
       <p className="text-sm font-semibold text-foreground">{title}</p>
       <p className="mt-1 text-xs text-muted-foreground">{description}</p>
@@ -94,68 +102,20 @@ function EmptyState({
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  subtitle,
-  icon: Icon,
-  border,
-  iconClass,
-  to,
-  search,
-}: {
-  label: string;
-  value: number;
-  subtitle: string;
-  icon: LucideIcon;
-  border: string;
-  iconClass: string;
-  to?: '/cases';
-  search?: Record<string, string>;
-}) {
-  const content = (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/65">{label}</p>
-          <p className="mt-1.5 text-3xl font-black leading-none tracking-tight text-white">{value}</p>
-          <p className="mt-1.5 text-[11px] text-white/50">{subtitle}</p>
-        </div>
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-current/35 bg-white/[0.03] ${iconClass}`}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-    </>
-  );
-
-  const classes = `kpi-card relative block h-full w-full min-h-[124px] min-w-[185px] overflow-hidden rounded-xl border bg-[#0b1217] p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,0,0,0.28)] ${border}`;
-
-  if (to) {
-    return (
-      <motion.div {...anim()}>
-        <Link to={to} search={search} aria-label={`Filtrar casos: ${label}`} className={classes}>
-          {content}
-        </Link>
-      </motion.div>
-    );
-  }
-
-  return (
-    <motion.div {...anim()} className={classes}>
-      {content}
-    </motion.div>
-  );
-}
-
 function formatRelativeTime(date: string | undefined) {
   if (!date) return 'Agora';
+
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return 'Agora';
+
   const diffMs = Date.now() - parsed.getTime();
   const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+
   if (diffMins < 60) return `Há ${diffMins || 1} min`;
+
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `Há ${diffHours} h`;
+
   const diffDays = Math.floor(diffHours / 24);
   return `Há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
 }
@@ -170,6 +130,119 @@ function getAlertLabel(severity: 'high' | 'medium' | 'low') {
   if (severity === 'high') return 'ALTO';
   if (severity === 'medium') return 'MÉDIO';
   return 'BAIXO';
+}
+
+function LegendItem({ color, label, line = false }: { color: string; label: string; line?: boolean }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {line ? (
+        <span className="h-0.5 w-4" style={{ backgroundColor: color }} />
+      ) : (
+        <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+      )}
+      {label}
+    </span>
+  );
+}
+
+function DonutPanel({
+  title,
+  data,
+  total,
+  accent = 'success',
+}: {
+  title: string;
+  data: { name: string; value: number; color: string }[];
+  total: number;
+  accent?: 'success' | 'info' | 'warning' | 'destructive' | 'purple';
+}) {
+  return (
+    <Panel
+      title={title}
+      accent={accent}
+      action={<Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />}
+      className="h-full"
+    >
+      {data.length === 0 ? (
+        <EmptyState icon={Activity} title="Nenhum dado disponível ainda" />
+      ) : (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative h-40 w-40 shrink-0 self-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  innerRadius={50}
+                  outerRadius={74}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {data.map((d) => (
+                    <Cell key={d.name} fill={d.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-black tabular-nums text-foreground">{total}</span>
+              <span className="text-[10px] text-muted-foreground">Total</span>
+            </div>
+          </div>
+
+          <ul className="flex-1 space-y-2.5 text-sm">
+            {data.map((d) => {
+              const pct = total ? Math.round((d.value / total) * 100) : 0;
+
+              return (
+                <li key={d.name} className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: d.color }} />
+                  <span className="flex-1 truncate text-xs text-foreground/90">{d.name}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {d.value} ({pct}%)
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function BarList({
+  items,
+  emptyIcon: Icon,
+  emptyTitle,
+}: {
+  items: { name: string; count: number; percentage: number }[];
+  emptyIcon: LucideIcon;
+  emptyTitle: string;
+}) {
+  if (items.length === 0) {
+    return <EmptyState icon={Icon} title={emptyTitle} />;
+  }
+
+  return (
+    <ul className="space-y-3.5">
+      {items.slice(0, 6).map((item) => (
+        <li key={item.name} className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="truncate text-foreground/85">{item.name}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {item.count} ({item.percentage}%)
+            </span>
+          </div>
+
+          <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-success" style={{ width: `${item.percentage}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function DashboardView() {
@@ -214,6 +287,7 @@ export function DashboardView() {
     const finalized = cases.filter((c) => isFinalizedSituation(c.situation)).length;
     const inProgress = cases.filter((c) => c.situation === 'Em andamento').length;
     const others = Math.max(cases.length - finalized - inProgress, 0);
+
     return [
       { name: 'Em andamento', value: inProgress },
       { name: 'Finalizados', value: finalized },
@@ -223,30 +297,86 @@ export function DashboardView() {
 
   const chartByTeam = useMemo(() => {
     const map: Record<string, number> = {};
+
     cases.forEach((c) => {
       const team = (c.team || 'Sem equipe').split(' - ')[0];
       map[team] = (map[team] || 0) + 1;
     });
 
     return Object.entries(map)
-      .map(([name, count]) => ({ name, count, percentage: stats.total ? Math.round((count / stats.total) * 100) : 0 }))
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: stats.total ? Math.round((count / stats.total) * 100) : 0,
+      }))
       .sort((a, b) => b.count - a.count);
   }, [cases, stats.total]);
 
   const chartBySeverity = useMemo(() => {
     const map = { CVLI: 0, CVP: 0, Patrimonial: 0 };
+
     cases.forEach((c) => {
       if (c.severity === 'CVLI' || c.severity === 'CVP' || c.severity === 'Patrimonial') {
         map[c.severity] += 1;
       }
     });
-    return SEVERITY_ORDER.map((name) => ({ name, value: map[name as keyof typeof map] })).filter((item) => item.value > 0);
+
+    return SEVERITY_ORDER.map((name) => ({ name, value: map[name as keyof typeof map] })).filter(
+      (item) => item.value > 0,
+    );
   }, [cases]);
+
+  const procedureByType = useMemo(() => {
+    const map: Record<string, number> = {};
+
+    cases.forEach((c) => {
+      const type = c.type || 'Não informado';
+      map[type] = (map[type] || 0) + 1;
+    });
+
+    return Object.entries(map)
+      .map(([name, value]) => ({
+        name,
+        count: value,
+        percentage: stats.total ? Math.round((value / stats.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [cases, stats.total]);
+
+  const pendingByCategory = useMemo(() => {
+    const rows = [
+      {
+        label: 'Prazos vencidos',
+        value: stats.overdue,
+        tone: 'destructive' as const,
+      },
+      {
+        label: 'Sem atualização há mais de 15 dias',
+        value: stats.noRecentUpdate,
+        tone: 'warning' as const,
+      },
+      {
+        label: 'Sem data limite definida',
+        value: stats.noDeadline,
+        tone: 'purple' as const,
+      },
+      {
+        label: 'Prioridade alta',
+        value: stats.highPriority,
+        tone: 'info' as const,
+      },
+    ];
+
+    return rows.filter((row) => row.value > 0);
+  }, [stats]);
 
   const cvliElucidationData = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 6 }, (_, index) => currentYear - (5 - index));
-    const byYear = years.reduce<Record<number, { key: string; ano: number; registros: number; elucidados: number; percentual: number }>>((acc, year) => {
+
+    const byYear = years.reduce<
+      Record<number, { key: string; ano: number; registros: number; elucidados: number; percentual: number }>
+    >((acc, year) => {
       acc[year] = {
         key: String(year),
         ano: year,
@@ -254,20 +384,25 @@ export function DashboardView() {
         elucidados: 0,
         percentual: 0,
       };
+
       return acc;
     }, {});
 
     cases.forEach((c) => {
-      if ((c.type === 'IP' || c.type === 'APF') && c.crimeClassification === 'CVLI' && c.createdAt) {
+      const isCvli = c.severity === 'CVLI' || c.crimeClassification === 'CVLI';
+
+      if ((c.type === 'IP' || c.type === 'APF') && isCvli && c.createdAt) {
         const createdAt = new Date(c.createdAt);
+
         if (!Number.isNaN(createdAt.getTime())) {
           const year = createdAt.getFullYear();
           if (byYear[year]) byYear[year].registros += 1;
         }
       }
 
-      if (c.situation === 'Relatado' && c.reportSent && c.reportDate) {
+      if (isCvli && c.situation === 'Relatado' && c.reportSent && c.reportDate) {
         const reportDate = new Date(c.reportDate);
+
         if (!Number.isNaN(reportDate.getTime())) {
           const year = reportDate.getFullYear();
           if (byYear[year]) byYear[year].elucidados += 1;
@@ -278,6 +413,7 @@ export function DashboardView() {
     return years.map((year) => {
       const item = byYear[year];
       const percentual = item.registros === 0 ? 0 : Number(((item.elucidados / item.registros) * 100).toFixed(1));
+
       return { ...item, percentual };
     });
   }, [cases]);
@@ -354,309 +490,381 @@ export function DashboardView() {
   }, [cvliElucidationData]);
 
   const resolutionRate = stats.total === 0 ? 0 : Math.round((stats.closed / stats.total) * 100);
+
   const refreshLabel = lastUpdatedAt
     ? lastUpdatedAt.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     : '---';
 
-  const chartCardClass = 'section-card h-full rounded-xl border border-white/10 bg-[#0b1217] p-4';
   const totalByStatus = chartByStatus.reduce((acc, item) => acc + item.value, 0);
   const totalBySeverity = chartBySeverity.reduce((acc, item) => acc + item.value, 0);
 
+  const statusDonutData = chartByStatus.map((item, index) => ({
+    ...item,
+    color: STATUS_COLORS[item.name] || CHART_COLORS[index % CHART_COLORS.length],
+  }));
+
+  const severityDonutData = chartBySeverity.map((item, index) => ({
+    ...item,
+    color: SEVERITY_COLORS[item.name] || CHART_COLORS[index % CHART_COLORS.length],
+  }));
+
   return (
-    <div className="space-y-5 rounded-2xl bg-[#050a0d] p-3 md:p-4 lg:p-5 2xl:p-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div className="mb-1 flex items-center gap-3">
-            <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-primary/40 bg-primary/15 shadow-[0_0_20px_rgba(17,205,122,0.35)]">
-              <Activity className="h-4 w-4 text-primary" />
-              <span className="absolute inline-flex h-8 w-8 animate-ping rounded-full border border-primary/20" />
-            </span>
-            <h1 className="text-3xl font-black tracking-tight text-white">Painel de Controle</h1>
-          </div>
-          <p className="text-sm text-white/70">Visão operacional dos inquéritos policiais</p>
-        </div>
+    <div className="mx-auto max-w-[1500px] space-y-6 rounded-2xl bg-background/80 p-3 md:p-4 lg:p-6">
+      <PageHeader
+        title="Painel de Controle"
+        subtitle="Visão operacional dos inquéritos policiais"
+        updatedAt={refreshLabel}
+        loading={loading}
+        onRefresh={loadCases}
+      />
 
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <Link
-            to="/register"
-            className="inline-flex items-center gap-2 rounded-xl border border-primary/50 bg-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/30"
-          >
-            <Sparkles className="h-4 w-4" />
-            + Novo Inquérito
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+        <motion.div {...anim()}>
+          <StatCard label="Total" value={stats.total} hint="Inquéritos cadastrados" icon={FileText} tone="success" />
+        </motion.div>
+
+        <motion.div {...anim(0.03)}>
+          <Link to="/cases" search={{ situation: 'Em andamento' }} className="block h-full">
+            <StatCard
+              label="Em andamento"
+              value={stats.inProgress}
+              hint={`${stats.total ? Math.round((stats.inProgress / stats.total) * 100) : 0}% do total`}
+              icon={Clock3}
+              tone="info"
+            />
           </Link>
-          <button
-            type="button"
-            disabled
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/60"
-            title="Filtros rápidos em breve"
+        </motion.div>
+
+        <motion.div {...anim(0.06)}>
+          <Link to="/cases" search={{ finalized: 'true' }} className="block h-full">
+            <StatCard
+              label="Finalizados"
+              value={stats.closed}
+              hint={`${stats.total ? Math.round((stats.closed / stats.total) * 100) : 0}% do total`}
+              icon={CheckCircle2}
+              tone="primary"
+            />
+          </Link>
+        </motion.div>
+
+        <motion.div {...anim(0.09)}>
+          <Link to="/cases" search={{ priority: 'Alta' }} className="block h-full">
+            <StatCard label="Alta prioridade" value={stats.highPriority} hint="Requer atenção" icon={TrendingUp} tone="warning" />
+          </Link>
+        </motion.div>
+
+        <motion.div {...anim(0.12)}>
+          <Link to="/cases" search={{ overdue: 'true' }} className="block h-full">
+            <StatCard label="Vencidos" value={stats.overdue} hint="Prazo expirado" icon={AlertTriangle} tone="destructive" />
+          </Link>
+        </motion.div>
+
+        <motion.div {...anim(0.15)}>
+          <Link to="/cases" search={{ noDeadline: 'true' }} className="block h-full">
+            <StatCard label="Sem prazo" value={stats.noDeadline} hint="Sem data limite" icon={CalendarOff} tone="purple" />
+          </Link>
+        </motion.div>
+
+        <motion.div {...anim(0.18)}>
+          <Link to="/cases" search={{ noUpdate: 'true' }} className="block h-full">
+            <StatCard label="Sem atualização" value={stats.noRecentUpdate} hint="+ 15 dias" icon={AlertCircle} tone="warning" />
+          </Link>
+        </motion.div>
+      </div>
+
+      {error ? (
+        <Panel title="ERRO AO CARREGAR" accent="destructive" icon={<AlertOctagon className="h-4 w-4 text-destructive" />}>
+          <p className="text-sm text-destructive">{error}</p>
+          <button onClick={loadCases} className="mt-3 text-xs font-semibold underline">
+            Tentar novamente
+          </button>
+        </Panel>
+      ) : null}
+
+      <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-3">
+        <motion.div {...anim(0.15)}>
+          <Panel
+            title="CASOS CRÍTICOS"
+            accent="destructive"
+            icon={<AlertTriangle className="h-4 w-4 text-destructive" />}
+            action={
+              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">
+                {criticalCases.length}
+              </span>
+            }
+            className="h-full"
           >
-            <Filter className="h-4 w-4" />
-            Filtros Rápidos
-          </button>
-          <button onClick={loadCases} className="ml-auto inline-flex items-center gap-2 text-xs text-white/60 hover:text-white">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Atualizado: {refreshLabel}
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-        <KpiCard label="Total" value={stats.total} subtitle="Inquéritos cadastrados" icon={FileText} border="border-emerald-400/45 bg-gradient-to-b from-emerald-500/20 via-emerald-500/8 to-[#0b1217] hover:border-emerald-300" iconClass="text-emerald-300" />
-        <KpiCard label="Em andamento" value={stats.inProgress} subtitle={`${stats.total ? Math.round((stats.inProgress / stats.total) * 100) : 0}% do total`} icon={Clock3} border="border-sky-400/45 bg-gradient-to-b from-sky-500/20 via-sky-500/8 to-[#0b1217] hover:border-sky-300" iconClass="text-sky-300" to="/cases" search={{ situation: 'Em andamento' }} />
-        <KpiCard label="Finalizados" value={stats.closed} subtitle={`${stats.total ? Math.round((stats.closed / stats.total) * 100) : 0}% do total`} icon={CheckCircle2} border="border-teal-400/45 bg-gradient-to-b from-teal-500/20 via-teal-500/8 to-[#0b1217] hover:border-teal-300" iconClass="text-teal-300" to="/cases" search={{ finalized: 'true' }} />
-        <KpiCard label="Alta prioridade" value={stats.highPriority} subtitle="Requer atenção" icon={TrendingUp} border="border-amber-400/45 bg-gradient-to-b from-amber-500/20 via-amber-500/8 to-[#0b1217] hover:border-amber-300" iconClass="text-amber-300" to="/cases" search={{ priority: 'Alta' }} />
-        <KpiCard label="Vencidos" value={stats.overdue} subtitle="Prazo expirado" icon={AlertTriangle} border="border-red-400/55 bg-gradient-to-b from-red-500/20 via-red-500/8 to-[#0b1217] hover:border-red-300" iconClass="text-red-300" to="/cases" search={{ overdue: 'true' }} />
-        <KpiCard label="Sem prazo" value={stats.noDeadline} subtitle="Sem data limite" icon={CalendarOff} border="border-violet-400/45 bg-gradient-to-b from-violet-500/20 via-violet-500/8 to-[#0b1217] hover:border-violet-300" iconClass="text-violet-300" to="/cases" search={{ noDeadline: 'true' }} />
-        <KpiCard label="Sem atualização" value={stats.noRecentUpdate} subtitle="+ 15 dias" icon={AlertCircle} border="border-orange-400/45 bg-gradient-to-b from-orange-500/20 via-orange-500/8 to-[#0b1217] hover:border-orange-300" iconClass="text-orange-300" to="/cases" search={{ noUpdate: 'true' }} />
-      </div>
-
-      {error && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          <p>{error}</p>
-          <button onClick={loadCases} className="mt-2 text-xs font-semibold underline">Tentar novamente</button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
-        <motion.div {...anim(0.15)} className="section-card flex h-full flex-col rounded-xl border border-red-500/35 bg-[#0b1217] p-4">
-          <div className="mb-2 flex items-center justify-between border-b border-red-500/20 pb-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-400" />
-              <h3 className="text-sm font-black uppercase tracking-[0.08em] text-red-400">Casos Críticos</h3>
-            </div>
-            <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-bold text-red-300">{criticalCases.length}</span>
-          </div>
-          <div className="flex-1">
             {criticalCases.length === 0 ? (
               <EmptyState icon={ShieldAlert} title="Sem casos críticos" description="Nenhum inquérito crítico ou vencido no momento." />
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {criticalCases.map((c) => (
-                  <Link key={c.id} to="/cases/$caseId" params={{ caseId: c.id }} className="group flex items-center justify-between gap-2 rounded-lg border border-red-500/20 bg-[#11161b] px-2.5 py-2 transition hover:border-red-400/40">
+                  <Link
+                    key={c.id}
+                    to="/cases/$caseId"
+                    params={{ caseId: c.id }}
+                    className="group flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-background/35 px-3 py-2.5 transition hover:border-destructive/45"
+                  >
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-sm font-bold text-white">{c.ppe}</p>
-                      <p className="text-[11px] text-red-200/85">{isCaseOverdue(c) ? 'Vencido há prazo excedido' : 'Alta prioridade CVLI'}</p>
+                      <p className="truncate font-mono text-sm font-bold text-foreground">{c.ppe}</p>
+                      <p className="text-[11px] text-destructive/85">
+                        {isCaseOverdue(c) ? 'Prazo vencido' : 'Alta prioridade CVLI'}
+                      </p>
                     </div>
-                    <span className="rounded-md border border-red-400/35 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-300">Vencido</span>
+
+                    <span className="rounded-md border border-destructive/35 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
+                      Crítico
+                    </span>
                   </Link>
                 ))}
               </div>
             )}
-          </div>
-          <Link to="/cases" search={{ overdue: 'true' }} className="mt-3 inline-flex text-xs font-semibold text-red-300 hover:text-red-200">
-            Ver todos os casos críticos →
-          </Link>
+
+            <Link to="/cases" search={{ overdue: 'true' }} className="mt-4 inline-flex text-xs font-semibold text-destructive hover:opacity-80">
+              Ver todos os casos críticos →
+            </Link>
+          </Panel>
         </motion.div>
 
-        <motion.div {...anim(0.2)} className="section-card flex h-full flex-col rounded-xl border border-amber-400/30 bg-[#0b1217] p-4">
-          <div className="mb-2 flex items-center justify-between border-b border-amber-400/20 pb-2">
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-amber-300" />
-              <h3 className="text-sm font-black uppercase tracking-[0.08em] text-amber-300">Alertas Recentes</h3>
-            </div>
-            <Link to="/alerts" className="text-xs font-semibold text-amber-300 hover:text-amber-200">Ver todos →</Link>
-          </div>
-          <div className="flex-1">
+        <motion.div {...anim(0.2)}>
+          <Panel
+            title="ALERTAS RECENTES"
+            accent="warning"
+            icon={<Bell className="h-4 w-4 text-warning" />}
+            action={
+              <Link to="/alerts" className="text-xs font-semibold text-warning hover:opacity-80">
+                Ver todos →
+              </Link>
+            }
+            className="h-full"
+          >
             {topAlerts.length === 0 ? (
               <EmptyState icon={Info} title="Sem alertas recentes" description="Tudo sob controle neste momento." />
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {topAlerts.slice(0, 4).map((a) => (
-                  <Link key={a.id} to="/cases/$caseId" params={{ caseId: a.caseId }} className="flex items-center justify-between gap-2 rounded-lg border border-amber-300/15 bg-[#11161b] px-2.5 py-2 transition hover:border-amber-300/35">
+                  <Link
+                    key={a.id}
+                    to="/cases/$caseId"
+                    params={{ caseId: a.caseId }}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-warning/15 bg-background/35 px-3 py-2.5 transition hover:border-warning/35"
+                  >
                     <div className="flex min-w-0 items-center gap-2">
                       <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getAlertBadgeClass(a.severity)}`}>
                         {getAlertLabel(a.severity)}
                       </span>
-                      <p className="truncate text-sm text-white/90">{a.message} · <span className="font-mono text-[11px] text-white/50">{a.casePpe}</span></p>
+
+                      <p className="truncate text-sm text-foreground/90">
+                        {a.message} · <span className="font-mono text-[11px] text-muted-foreground">{a.casePpe}</span>
+                      </p>
                     </div>
-                    <span className="shrink-0 text-[11px] text-amber-200/80">{a.time}</span>
+
+                    <span className="shrink-0 text-[11px] text-warning/80">{a.time}</span>
                   </Link>
                 ))}
               </div>
             )}
-          </div>
+          </Panel>
         </motion.div>
 
-        <motion.div {...anim(0.25)} className="section-card flex h-full flex-col rounded-xl border border-emerald-500/30 bg-[#0b1217] p-4">
-          <h3 className="mb-3 text-sm font-black uppercase tracking-[0.08em] text-primary">Situação Operacional</h3>
-          <div className="flex-1 space-y-2 text-sm">
-            <div className="flex items-center justify-between rounded-lg border border-white/5 bg-[#0b1114] px-3 py-2"><span className="text-white/70">Inquéritos ativos</span><span className="font-bold text-cyan-300">{stats.inProgress}</span></div>
-            <div className="flex items-center justify-between rounded-lg border border-white/5 bg-[#0b1114] px-3 py-2"><span className="text-white/70">Vencidos</span><span className="font-bold text-red-400">{stats.overdue}</span></div>
-            <div className="flex items-center justify-between rounded-lg border border-white/5 bg-[#0b1114] px-3 py-2"><span className="text-white/70">Sem atualização (+15 dias)</span><span className="font-bold text-amber-300">{stats.noRecentUpdate}</span></div>
-            <div className="flex items-center justify-between rounded-lg border border-white/5 bg-[#0b1114] px-3 py-2"><span className="text-white/70">Sem prazo definido</span><span className="font-bold text-violet-300">{stats.noDeadline}</span></div>
-          </div>
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-primary/35 bg-primary/10 px-3 py-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.12em] text-primary">Taxa de resolução</p>
-              <p className="mt-1 text-sm text-white/80">{stats.closed} de {stats.total} finalizados</p>
-            </div>
-            <div className="relative h-14 w-14 rounded-full border border-white/15 bg-[#0b1114] p-1">
-              <div
-                className="absolute inset-1 rounded-full"
-                style={{
-                  background: `conic-gradient(#12d681 ${resolutionRate}%, rgba(255,255,255,0.08) ${resolutionRate}% 100%)`,
-                }}
-              />
-              <div className="relative flex h-full w-full items-center justify-center rounded-full bg-[#0b1114] text-sm font-bold text-white">{resolutionRate}%</div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
+        <motion.div {...anim(0.25)}>
+          <Panel title="META DE CONCLUSÃO" accent="success" className="h-full">
+            <ul className="space-y-3 text-sm">
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-foreground/90">
+                  <span className="h-1.5 w-1.5 rounded-full bg-info" />
+                  Procedimentos cadastrados
+                </span>
+                <span className="font-semibold tabular-nums text-info">{stats.total}</span>
+              </li>
 
-      {!loading && !error && cases.length === 0 && (
-        <EmptyState icon={FileText} title="Nenhum inquérito encontrado" description="Cadastre um novo inquérito para iniciar os indicadores do dashboard." />
-      )}
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-foreground/90">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                  Finalizados
+                </span>
+                <span className="font-semibold tabular-nums text-success">{stats.closed}</span>
+              </li>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <motion.div {...anim(0.3)} className={chartCardClass}>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-black uppercase tracking-[0.06em] text-primary">Por Situação</h3>
-            <Expand className="h-4 w-4 text-white/40" />
-          </div>
-          {chartByStatus.length === 0 ? (
-            <EmptyState icon={Activity} title="Nenhum dado disponível ainda" />
-          ) : (
-            <div className="grid h-[260px] grid-cols-1 items-center gap-4 md:grid-cols-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={chartByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={52} outerRadius={86} stroke="#0a1217" strokeWidth={2}>
-                    {chartByStatus.map((entry, i) => <Cell key={i} fill={STATUS_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-3">
-                <p className="text-4xl font-black leading-none text-white">{totalByStatus}</p>
-                <p className="text-xs text-white/60">Total</p>
-                {chartByStatus.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-white/90"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[item.name] || '#fff' }} />{item.name}</span>
-                    <span className="text-white/70">{item.value} ({totalByStatus ? Math.round((item.value / totalByStatus) * 100) : 0}%)</span>
-                  </div>
-                ))}
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-foreground/90">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                  Em andamento
+                </span>
+                <span className="font-semibold tabular-nums text-warning">{stats.inProgress}</span>
+              </li>
+
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-foreground/90">
+                  <span className="h-1.5 w-1.5 rounded-full bg-purple" />
+                  Pendências ativas
+                </span>
+                <span className="font-semibold tabular-nums text-purple">
+                  {stats.overdue + stats.noDeadline + stats.noRecentUpdate}
+                </span>
+              </li>
+            </ul>
+
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-success/25 bg-success/5 px-3 py-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-success">Taxa de resolução</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {stats.closed} de {stats.total} finalizados
+                </p>
               </div>
-            </div>
-          )}
-        </motion.div>
 
-        <motion.div {...anim(0.35)} className={chartCardClass}>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-black uppercase tracking-[0.06em] text-primary">Por Equipe</h3>
-            <Expand className="h-4 w-4 text-white/40" />
-          </div>
-          {chartByTeam.length === 0 ? (
-            <EmptyState icon={Users} title="Nenhum dado disponível ainda" />
-          ) : (
-            <div className="space-y-3 pt-2">
-              {chartByTeam.slice(0, 4).map((team) => (
-                <div key={team.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/80">{team.name}</span>
-                    <span className="text-white/60">{team.count} ({team.percentage}%)</span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-white/5">
-                    <div className="h-2.5 rounded-full bg-emerald-400" style={{ width: `${team.percentage}%` }} />
-                  </div>
+              <div className="relative h-14 w-14 rounded-full border border-border bg-background p-1">
+                <div
+                  className="absolute inset-1 rounded-full"
+                  style={{
+                    background: `conic-gradient(var(--success) ${resolutionRate}%, color-mix(in oklab, var(--border) 80%, transparent) ${resolutionRate}% 100%)`,
+                  }}
+                />
+                <div className="relative flex h-full w-full items-center justify-center rounded-full bg-background text-sm font-bold text-foreground">
+                  {resolutionRate}%
                 </div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div {...anim(0.4)} className={chartCardClass}>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-black uppercase tracking-[0.06em] text-primary">Por Gravidade</h3>
-            <Expand className="h-4 w-4 text-white/40" />
-          </div>
-          {chartBySeverity.length === 0 ? (
-            <EmptyState icon={ShieldAlert} title="Nenhum dado disponível ainda" />
-          ) : (
-            <div className="grid h-[260px] grid-cols-1 items-center gap-4 md:grid-cols-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={chartBySeverity} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={52} outerRadius={86} stroke="#0a1217" strokeWidth={2}>
-                    {chartBySeverity.map((entry, i) => <Cell key={i} fill={SEVERITY_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-3">
-                <p className="text-4xl font-black leading-none text-white">{totalBySeverity}</p>
-                <p className="text-xs text-white/60">Total</p>
-                {chartBySeverity.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-white/90"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SEVERITY_COLORS[item.name] || '#fff' }} />{item.name}</span>
-                    <span className="text-white/70">{item.value} ({totalBySeverity ? Math.round((item.value / totalBySeverity) * 100) : 0}%)</span>
-                  </div>
-                ))}
               </div>
             </div>
-          )}
+          </Panel>
         </motion.div>
       </div>
 
-      <motion.div {...anim(0.45)} className="section-card rounded-xl border border-white/10 bg-[#0b1217] p-4">
-        <h3 className="mb-3 text-lg font-black tracking-tight text-primary">CVLI – Comparativo de Elucidação</h3>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <DonutPanel title="POR SITUAÇÃO" data={statusDonutData} total={totalByStatus} accent="success" />
+        <DonutPanel title="POR GRAVIDADE" data={severityDonutData} total={totalBySeverity} accent="destructive" />
 
-        {cvliElucidationData.length === 0 ? (
-          <EmptyState icon={ShieldAlert} title="Nenhum dado CVLI cadastrado ainda" description="Cadastre inquéritos CVLI para visualizar o comparativo anual." />
-        ) : (
-          <div className="grid grid-cols-1 gap-3 2xl:grid-cols-12">
-            <div className="2xl:col-span-8">
-              <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={cvliElucidationData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1d2a30" />
-                  <XAxis dataKey="ano" tick={{ fontSize: 11, fill: '#dbe2ea' }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#9cb0bf' }} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#9cb0bf' }} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value: number, name: string) => {
-                      if (name === 'Taxa de elucidação (%)') return [`${value}%`, name];
-                      return [value, name];
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Bar yAxisId="left" dataKey="registros" name="Registros" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="elucidados" name="Elucidados" fill="#12d681" radius={[6, 6, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="percentual" name="Taxa de elucidação (%)" stroke="#f8fafc" strokeWidth={2} dot={{ r: 3 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+        <Panel title="PROCEDIMENTOS POR TIPO" accent="info" action={<Expand className="h-4 w-4 text-muted-foreground" />} className="h-full">
+          <BarList items={procedureByType} emptyIcon={FileText} emptyTitle="Nenhum tipo informado" />
+        </Panel>
+      </div>
 
-            <div className="overflow-x-auto rounded-lg border border-white/10 2xl:col-span-4">
-              <table className="w-full min-w-[320px] text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Ano</th>
-                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Registros</th>
-                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">Elucidados</th>
-                    <th className="px-2.5 py-1.5 font-bold uppercase tracking-[0.1em] text-white/65">%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cvliElucidationData.map((item) => (
-                    <tr key={item.key} className="border-b border-white/5 last:border-b-0">
-                      <td className="px-2.5 py-1.5 text-white">{item.ano}</td>
-                      <td className="px-2.5 py-1.5 text-white">{item.registros}</td>
-                      <td className="px-2.5 py-1.5 text-white">{item.elucidados}</td>
-                      <td className="px-2.5 py-1.5 font-bold text-primary">{item.percentual.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-white/5">
-                    <td className="px-2.5 py-1.5 text-sm font-black text-white">TOTAL</td>
-                    <td className="px-2.5 py-1.5 text-sm font-black text-white">{cvliTotals.registros}</td>
-                    <td className="px-2.5 py-1.5 text-sm font-black text-white">{cvliTotals.elucidados}</td>
-                    <td className="px-2.5 py-1.5 text-sm font-black text-primary">{cvliTotals.registros ? ((cvliTotals.elucidados / cvliTotals.registros) * 100).toFixed(1) : '0.0'}%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <Panel title="CVLI — COMPARATIVO ANUAL" accent="success" className="xl:col-span-2">
+          <div className="mb-3 flex flex-wrap items-center gap-5">
+            <LegendItem color="var(--info)" label="Registros" />
+            <LegendItem color="var(--success)" label="Elucidados" />
+            <LegendItem color="var(--foreground)" label="Taxa de elucidação (%)" line />
           </div>
-        )}
 
-        <p className="mt-3 text-center text-xs text-white/55">Últimos 6 anos (ordem cronológica)</p>
-      </motion.div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={cvliElucidationData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }}>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="ano" stroke="var(--muted-foreground)" fontSize={11} />
+                <YAxis yAxisId="left" stroke="var(--muted-foreground)" fontSize={11} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="var(--muted-foreground)"
+                  fontSize={11}
+                  domain={[0, 100]}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'Taxa de elucidação (%)') return [`${value}%`, name];
+                    return [value, name];
+                  }}
+                />
+                <Bar yAxisId="left" dataKey="registros" name="Registros" fill="var(--info)" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="elucidados" name="Elucidados" fill="var(--success)" radius={[4, 4, 0, 0]} />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="percentual"
+                  name="Taxa de elucidação (%)"
+                  stroke="var(--foreground)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: 'var(--foreground)' }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </Panel>
+
+        <Panel title="CVLI — RESUMO ANUAL" accent="success" bodyClassName="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[320px] text-left text-sm">
+              <thead className="bg-muted/40 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-bold">Ano</th>
+                  <th className="px-4 py-3 text-right font-bold">Reg</th>
+                  <th className="px-4 py-3 text-right font-bold">Eluc</th>
+                  <th className="px-4 py-3 text-right font-bold">%</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {cvliElucidationData.map((item) => (
+                  <tr key={item.key} className="border-t border-border">
+                    <td className="px-4 py-3 font-semibold">{item.ano}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{item.registros}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{item.elucidados}</td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-success">
+                      {item.percentual.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+
+                <tr className="border-t border-border bg-muted/30 font-bold">
+                  <td className="px-4 py-3">TOTAL</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{cvliTotals.registros}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{cvliTotals.elucidados}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-success">
+                    {cvliTotals.registros ? ((cvliTotals.elucidados / cvliTotals.registros) * 100).toFixed(1) : '0.0'}%
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <Panel title="PENDÊNCIAS POR CATEGORIA" accent="warning" icon={<Bell className="h-4 w-4 text-warning" />}>
+          {pendingByCategory.length === 0 ? (
+            <EmptyState icon={Info} title="Nenhuma pendência ativa" description="Os indicadores principais não apontam pendências no momento." />
+          ) : (
+            <ul className="space-y-3">
+              {pendingByCategory.map((item) => (
+                <li key={item.label} className="flex items-center gap-3">
+                  <span
+                    className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: `var(--${item.tone})` }}
+                  />
+                  <span className="flex-1 text-sm text-foreground/90">{item.label}</span>
+                  <span className="text-sm font-bold tabular-nums text-warning">{item.value}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel title="DISTRIBUIÇÃO POR EQUIPE" accent="success" icon={<Users className="h-4 w-4 text-success" />}>
+          <BarList items={chartByTeam} emptyIcon={Users} emptyTitle="Nenhuma equipe informada" />
+
+          {chartByTeam.length > 0 ? (
+            <div className="mt-5 rounded-lg border border-info/20 bg-info/5 p-3">
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold">
+                <Info className="h-3.5 w-3.5 text-info" />
+                Maior concentração atual
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {chartByTeam[0].name}: <span className="font-bold text-success">{chartByTeam[0].count} caso(s)</span>
+              </div>
+            </div>
+          ) : null}
+        </Panel>
+      </div>
+
+      {!loading && !error && cases.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="Nenhum inquérito encontrado"
+          description="Cadastre um novo inquérito para iniciar os indicadores do dashboard."
+        />
+      ) : null}
     </div>
   );
 }
