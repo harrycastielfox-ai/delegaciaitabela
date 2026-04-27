@@ -298,3 +298,62 @@
     background: oklch(0.35 0.005 240);
   }
 }
+
+/* =========================================================
+   AJUSTE VISUAL DO DASHBOARD - MESCLAR NO FINAL DO styles.css
+   Não substitua seu styles.css inteiro.
+   Cole este bloco no final do arquivo atual.
+   ========================================================= */
+
+@layer components {
+  .stat-card {
+    background:
+      radial-gradient(
+        circle at top right,
+        color-mix(in oklab, var(--stat-color, var(--primary)) 16%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(
+        145deg,
+        color-mix(in oklab, var(--card) 100%, transparent),
+        color-mix(in oklab, var(--card) 72%, transparent)
+      );
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at top right,
+      color-mix(in oklab, var(--stat-color, var(--primary)) 20%, transparent),
+      transparent 62%
+    );
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--stat-color, var(--primary)) 42%, var(--border));
+    box-shadow: 0 12px 28px color-mix(in oklab, var(--stat-color, var(--primary)) 10%, transparent);
+  }
+
+  .stat-card-border {
+    border-color: color-mix(in oklab, var(--stat-color, var(--primary)) 34%, var(--border));
+  }
+}
+
+/* Caso seu CSS atual ainda não tenha estas variáveis, adicione dentro de :root.
+   Pelo arquivo que você mandou, success e warning já existem.
+   O Lovable usa info e purple; por isso esses dois são importantes. */
+
+:root {
+  --info: oklch(0.70 0.18 235);
+  --purple: oklch(0.65 0.20 295);
+}
