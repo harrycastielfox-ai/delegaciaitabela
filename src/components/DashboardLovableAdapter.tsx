@@ -319,7 +319,7 @@ export function DashboardLovableAdapter() {
     : '---';
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <PageHeader
         title="Painel de Controle"
         subtitle="Delegacia Territorial de Itabela — visão executiva em dados reais"
@@ -328,7 +328,7 @@ export function DashboardLovableAdapter() {
         onRefresh={loadCases}
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-7">
         <StatCard label="TOTAL" value={stats.total} hint="Procedimentos cadastrados" icon={FileText} tone="success" />
         <StatCard label="EM ANDAMENTO" value={stats.emAndamento} hint={`${stats.total ? Math.round((stats.emAndamento / stats.total) * 100) : 0}% do total`} icon={Clock3} tone="info" />
         <StatCard label="CONCLUÍDOS" value={stats.concluidos} hint={`${stats.taxaConclusao}% taxa atual`} icon={CheckCircle2} tone="primary" />
@@ -344,12 +344,17 @@ export function DashboardLovableAdapter() {
         </Panel>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Panel title="ALERTAS CRÍTICOS" accent="destructive" icon={<AlertOctagon className="h-4 w-4 text-destructive" />} className="h-full">
-          <ul className="space-y-3">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <Panel
+          title="ALERTAS CRÍTICOS"
+          accent="destructive"
+          icon={<AlertOctagon className="h-4 w-4 text-destructive" />}
+          className="h-full bg-destructive/5"
+        >
+          <ul className="space-y-4">
             {alertasCriticos.map((item) => (
-              <li key={item.title} className="flex items-start justify-between gap-3 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5">
-                <div className="min-w-0 space-y-1">
+              <li key={item.title} className="flex items-center justify-between gap-4 rounded-xl border border-destructive/20 bg-card/80 px-4 py-3">
+                <div className="min-w-0 space-y-1.5">
                   <p className="flex items-center gap-2 text-sm font-semibold">
                     <StatusDot color={item.color} />
                     <span className="truncate">{item.title}</span>
@@ -362,11 +367,16 @@ export function DashboardLovableAdapter() {
           </ul>
         </Panel>
 
-        <Panel title="PENDÊNCIAS POR CATEGORIA" accent="warning" icon={<Bell className="h-4 w-4 text-warning" />} className="h-full">
-          <ul className="space-y-3.5">
+        <Panel
+          title="PENDÊNCIAS POR CATEGORIA"
+          accent="warning"
+          icon={<Bell className="h-4 w-4 text-warning" />}
+          className="h-full bg-warning/5"
+        >
+          <ul className="space-y-4">
             {pendencias.length === 0 ? <li className="text-sm text-muted-foreground">Sem pendências críticas no momento.</li> : null}
             {pendencias.map((p) => (
-              <li key={p.label} className="space-y-1.5 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5">
+              <li key={p.label} className="space-y-2 rounded-xl border border-warning/20 bg-card/80 px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-sm font-semibold">
                     <StatusDot color={p.color} />
@@ -376,14 +386,14 @@ export function DashboardLovableAdapter() {
                     {p.value}
                   </span>
                 </div>
-                <p className="pl-4 text-xs text-muted-foreground">{p.description}</p>
+                <p className="pl-4 text-xs leading-relaxed text-muted-foreground">{p.description}</p>
               </li>
             ))}
           </ul>
         </Panel>
 
-        <Panel title="META DE CONCLUSÃO" accent="success" className="h-full">
-          <ul className="space-y-3 text-sm">
+        <Panel title="META DE CONCLUSÃO" accent="success" className="h-full bg-gradient-to-b from-success/10 to-card">
+          <ul className="space-y-4 text-sm">
             <li className="flex items-center justify-between">
               <span className="flex items-center gap-2"><StatusDot color={COLORS.foreground} />Procedimentos cadastrados</span>
               <strong className="text-base tabular-nums">{stats.total}</strong>
@@ -401,19 +411,19 @@ export function DashboardLovableAdapter() {
               <strong className="text-base tabular-nums text-purple">{stats.prazoCritico + stats.semPrazo + stats.semAtualizacao}</strong>
             </li>
           </ul>
-          <div className="mt-4 rounded-lg border border-success/20 bg-success/5 p-3">
-            <div className="mb-2 flex items-center justify-between text-xs font-semibold">
+          <div className="mt-6 rounded-2xl border border-success/30 bg-card/80 p-4">
+            <div className="mb-3 flex items-center justify-between text-xs font-semibold">
               <span>Taxa de conclusão atual</span>
-              <span className="text-sm tabular-nums">{stats.taxaConclusao}%</span>
+              <span className="text-2xl font-extrabold tabular-nums text-success">{stats.taxaConclusao}%</span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-success/15">
+            <div className="h-4 overflow-hidden rounded-full bg-success/15">
               <div className="h-full rounded-full bg-success transition-all" style={{ width: `${stats.taxaConclusao}%` }} />
             </div>
           </div>
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <DonutPanel title="POR STATUS" data={bySituation} accent="success" />
         <DonutPanel title="POR PRIORIDADE" data={byPriority} accent="warning" />
 
@@ -432,20 +442,20 @@ export function DashboardLovableAdapter() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
+          <div className="mt-6 rounded-xl border border-border/70 bg-muted/20 p-3 text-[11px] text-muted-foreground">
             <p className="font-semibold">Legenda: IP = Inquérito Policial • APF = Auto de Prisão em Flagrante • TCO = Termo Circunstanciado de Ocorrência.</p>
           </div>
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <Panel title="CVLI — COMPARATIVO ANUAL" accent="success" className="xl:col-span-2">
           <div className="mb-3 flex items-center gap-5 text-xs">
             <Legend color={COLORS.info} label="Registros" />
             <Legend color={COLORS.success} label="Elucidados" />
             <Legend color={COLORS.foreground} label="Taxa (%)" line />
           </div>
-          <div className="h-72">
+          <div className="mt-6 min-h-80">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={annualCvli}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
@@ -485,7 +495,7 @@ export function DashboardLovableAdapter() {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
         <Panel title="ANÁLISE POR LOCALIDADE" accent="warning">
           <div className="max-h-72 overflow-auto">
             <table className="w-full text-sm">
@@ -512,7 +522,7 @@ export function DashboardLovableAdapter() {
         </Panel>
 
         <Panel title="ANÁLISE POR GRAVIDADE" accent="destructive">
-          <div className="h-72">
+          <div className="mt-6 min-h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySeverity} layout="vertical" margin={{ top: 5, right: 20, bottom: 0, left: 10 }}>
                 <CartesianGrid stroke="var(--border)" horizontal={false} />
@@ -527,7 +537,7 @@ export function DashboardLovableAdapter() {
       </div>
 
       <Panel title="DISTRIBUIÇÃO POR EQUIPE" accent="success">
-        <ul className="space-y-3.5">
+        <ul className="space-y-4">
           {byTeam.map((t) => (
             <li key={t.name} className="flex items-center gap-3">
               <span className="w-44 truncate text-xs text-muted-foreground">{t.name}</span>
@@ -541,7 +551,7 @@ export function DashboardLovableAdapter() {
           ))}
         </ul>
 
-        <div className="mt-5 rounded-lg border border-info/20 bg-info/5 p-3 text-[11px] text-muted-foreground">
+        <div className="mt-6 rounded-xl border border-info/20 bg-info/5 p-4 text-[11px] text-muted-foreground">
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold">
             <Info className="h-3.5 w-3.5 text-info" /> Insight automático
           </div>
